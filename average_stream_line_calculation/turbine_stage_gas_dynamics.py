@@ -63,9 +63,9 @@ class StageGasDynamics:
             self._p2 = None
             self._L_t = None
             self._eta_t0 = None
-        elif 'p2' in kwargs:
+        elif 'p2_av' in kwargs:
             self._H0 = None
-            self._p2 = kwargs['p2']
+            self._p2 = kwargs['p2_av']
             self._L_t = None
             self._eta_t0 = None
         elif ('L_t' in kwargs) and ('eta_t0' in kwargs):
@@ -74,7 +74,7 @@ class StageGasDynamics:
             self._H0 = None
             self._p2 = None
         else:
-            assert False, 'H0 or p2 or (L_t and eta_t0) must be set'
+            assert False, 'H0 or p2_av or (L_t and eta_t0) must be set'
         self._stage_calculation()
 
     @property
@@ -151,14 +151,14 @@ class StageGasDynamics:
 
     @property
     def p2(self):
-        if 'p2' in self._kwargs:
-            assert self._p2 is not None, 'p2 must not be None'
+        if 'p2_av' in self._kwargs:
+            assert self._p2 is not None, 'p2_av must not be None'
         return self._p2
 
     @p2.setter
     def p2(self, value):
         self._p2 = value
-        if 'p2' in self._kwargs:
+        if 'p2_av' in self._kwargs:
             self._stage_calculation()
 
     @property
@@ -300,7 +300,7 @@ class StageGasDynamics:
         logger.info('%s _stage_calculation' % self.str())
         if 'H0' in self._kwargs:
             self._specified_heat_drop_calculation()
-        elif 'p2' in self._kwargs:
+        elif 'p2_av' in self._kwargs:
             self._specified_outlet_pressure_calculation()
         elif 'L_t' in self._kwargs and 'eta_t0' in self._kwargs:
             self._specified_work_calculation()
@@ -362,12 +362,14 @@ class StageGasDynamics:
         self.T1 = self.T0_stag - self.H_s * self.phi ** 2 / self.c_p_gas
         self.T1_ad = self.T0_stag - self.H_s / self.c_p_gas
         self.k_gas = self.work_fluid.k_av_int
-        logger.debug('%s _compute_stage_parameters k_gas = %s' % (self.str(), self.k_gas))
+        logger.debug('%s _compute_stage_parameters k = %s' % (self.str(), self.k_gas))
         self.p1 = self.p0_stag * (self.T1_ad / self.T0_stag) ** (self.k_gas / (self.k_gas - 1))
         self.A1_a = np.pi * self.D1 * self.l1
         self.rho1 = self.p1 / (self.work_fluid.R * self.T1)
         self.G_sa = self.G_stage_in - self.g_ld * self.G_turbine
         self.c1_a = self.G_sa / (self.rho1 * self.A1_a)
+        if self.c1_a > self.c1:
+            raise InvalidStageSizeValue('c1_a must be less than c1')
         self.alpha1 = np.arcsin(self.c1_a / self.c1)
         self.c1_u = self.c1 * np.cos(self.alpha1)
         self.w1 = np.sqrt(self.c1**2 + self.u1**2 - 2 * self.c1 * self.u1 * np.cos(self.alpha1))
@@ -382,7 +384,7 @@ class StageGasDynamics:
         self.T2_ad = self.T1 - self.H_l / self.c_p_gas
         if ('H0' in self._kwargs) or ('L_t' in self._kwargs and 'eta_t0' in self._kwargs):
             self.p2 = self.p1 * (self.T2_ad / self.T1) ** (self.k_gas / (self.k_gas - 1))
-        elif 'p2' in self._kwargs:
+        elif 'p2_av' in self._kwargs:
             self.p2_check = self.p1 * (self.T2_ad / self.T1) ** (self.k_gas / (self.k_gas - 1))
         self.rho2 = self.p2 / (self.work_fluid.R * self.T2)
         self.A2_a = np.pi * self.D2 * self.l2
@@ -419,10 +421,10 @@ class StageGasDynamics:
         self.zeta_tv = self.h_tv / self.H0
         self.eta_t = self.eta_t_touch - self.zeta_tv
         self.eta_l = self.eta_l_touch - self.zeta_tv
-        if ('H0' in self._kwargs) or ('p2' in self._kwargs):
+        if ('H0' in self._kwargs) or ('p2_av' in self._kwargs):
             self.L_t = self.H0 * self.eta_t
             logger.debug('%s _compute_stage_parameters L_t = %s' % (self.str(), self.L_t))
-            # удельная работа ступени, отнесенная к расходу через СА первой ступени с учетом потреь из-за утечек
+            # удельная работа ступени, отнесенная к расходу через СА первой ступени с учетом потерь из-за утечек
             self.L_t_rel = self.L_t * self.G_stage_in / self.G_turbine - self.L_t * (self.g_ld + self.g_lk + self.g_lb)
         self.T_st = self.T2 + self.h_z / self.c_p_gas + self.h_tv / self.c_p_gas
         self.T_st_stag = self.T_st + self.h_v / self.c_p_gas

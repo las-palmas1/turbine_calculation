@@ -63,6 +63,14 @@ class Turbine:
             self._gamma_sum = None
         else:
             assert False, 'gamma_av and gamma_sum or gamma_in and gamma_out must be set'
+        self.L_t_sum = None
+        self.H_t = None
+        self.H_t_stag = None
+        self.eta_t = None
+        self.eta_t_stag = None
+        self.eta_l = None
+        self.N = None
+        self.eta_m = None
 
     def __getitem__(self, item) -> StageGasDynamics:
         try:
@@ -523,11 +531,28 @@ if __name__ == '__main__':
     turbine.compute_geometry()
     turbine.set_rho()
     turbine.compute_stages_gas_dynamics()
-    turbine.geom.plot_geometry()
-    turbine.geom.plot_heat_drop_distribution()
-    print(turbine.geom.c_t)
-    for num, i in enumerate(turbine):
-        i.plot_velocity_triangle('Stage %s' % (num + 1))
+    # turbine.geom.plot_geometry()
+    # turbine.geom.plot_heat_drop_distribution()
+    # print(turbine.geom.c_t)
+    # for num, i in enumerate(turbine):
+    #     i.plot_velocity_triangle('Stage %s' % (num + 1))
+    print(turbine.geom[1].D1 + 2 * turbine.geom[1].l1)
+    print(turbine.geom[1].D2 + 2 * turbine.geom[1].l2)
+    print(turbine.geom[1].D2 - 2 * turbine.geom[1].l2)
+    print(turbine.geom[1].D1 - 2 * turbine.geom[1].l1)
+    print(turbine.geom[1].D1)
+    print(turbine.geom[1].D2)
+    print(turbine[1].n)
+    print(turbine[1].k_gas)
+    print(turbine[1].c_p_gas)
+    print(turbine[1].c1)
+    print(turbine[1].alpha1)
+    print(turbine[1].p2)
+    print(turbine[1].c2_a)
+    print(turbine[1].p0_stag)
+    print(turbine[1].T0_stag)
+    print(turbine[1].H0)
+    print(turbine[1].c2)
 
 
 
