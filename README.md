@@ -1,2 +1,2 @@
 # turbine_calculation
-readme
+my course project
