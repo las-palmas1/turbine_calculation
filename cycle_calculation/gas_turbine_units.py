@@ -81,7 +81,7 @@ def compute_power_turb_output(work_fluid: KeroseneCombustionProducts, T_out_stag
     L_turb = work_fluid.c_p_av_int * (T_in_stag - work_fluid.T2)
     H_turb_stag = work_fluid.c_p_av_int * \
                   (1 - pi_turb_stag**((1 - work_fluid.k_av_int) / work_fluid.k_av_int)) * T_in_stag
-    return {'k_gas': work_fluid.k_av_int, 'c_p_gas': work_fluid.c_p_av_int, 'pi_turb_stag': pi_turb_stag,
+    return {'k': work_fluid.k_av_int, 'c_p': work_fluid.c_p_av_int, 'pi_turb_stag': pi_turb_stag,
             'T_out_stag': work_fluid.T2, 'L_turb': L_turb, 'H_turb_stag': H_turb_stag,
             'eta_turb_stag': eta_turb_stag, 'work_fluid': work_fluid}
 
@@ -118,8 +118,8 @@ class PowerTurbine:
         output = compute_power_turb_output(self._input.work_fluid, self._input.T_out_stag_init, self._input.T_in_stag,
                                            self._input.p_in_stag, self.input.p_out_stag, self._input.eta_turb_stag_p,
                                            self._input.alpha)
-        self._output.k_gas = output['k_gas']
-        self._output.c_p_gas = output['c_p_gas']
+        self._output.k_gas = output['k']
+        self._output.c_p_gas = output['c_p']
         self._output.T_out_stag = output['T_out_stag']
         self._output.eta_turb_stag = output['eta_turb_stag']
         self._output.H_turb_stag = output['H_turb_stag']
@@ -146,7 +146,7 @@ def compute_comp_turb_output(work_fluid: KeroseneCombustionProducts, pi_turb_sta
         k_gas_new = work_fluid.k_av_int
         dk_rel = max(abs(k_gas_new - k_gas) / k_gas)
         k_gas = k_gas_new
-        logger.debug('comp_turb_output k_gas = %s' % k_gas)
+        logger.debug('comp_turb_output k = %s' % k_gas)
     pi_turb_stag = np.array([pi_turb_stag_init])
     dpi_rel = 1
     p_out_stag = None
@@ -160,7 +160,7 @@ def compute_comp_turb_output(work_fluid: KeroseneCombustionProducts, pi_turb_sta
         dpi_rel = max(abs(pi_turb_stag - pi_turb_stag_new) / pi_turb_stag)
         pi_turb_stag = pi_turb_stag_new
     H_turb_stag = work_fluid.c_p_av_int * T_in_stag * (1 - pi_turb_stag ** ((1 - k_gas) / k_gas))
-    return {'L_turb': L_turb, 'k_gas': k_gas, 'c_p_gas': work_fluid.c_p_av_int, 'T_out_stag': work_fluid.T2,
+    return {'L_turb': L_turb, 'k': k_gas, 'c_p': work_fluid.c_p_av_int, 'T_out_stag': work_fluid.T2,
             'p_out_stag': p_out_stag, 'pi_turb_stag': pi_turb_stag, 'H_turb_stag': H_turb_stag,
             'eta_turb_stag': eta_turb_stag, 'work_fluid': work_fluid}
 
@@ -186,9 +186,9 @@ class CompressorTurbine:
         output = compute_comp_turb_output(self._input.work_fluid, self._input.pi_turb_stag_init, self._input.T_in_stag,
                                           self._input.p_in_stag, self._input.L_comp, self._input.g_gas,
                                           self._input.eta_turb_stag_p, self._input.eta_m, self._input.alpha)
-        self._output.c_p_gas = output['c_p_gas']
+        self._output.c_p_gas = output['c_p']
         self._output.H_turb_stag = output['H_turb_stag']
-        self._output.k_gas = output['k_gas']
+        self._output.k_gas = output['k']
         self._output.L_turb = output['L_turb']
         self._output.p_out_stag = output['p_out_stag']
         self._output.pi_turb_stag = output['pi_turb_stag']
@@ -317,7 +317,7 @@ def compute_outlet_output(work_fluid: KeroseneCombustionProducts, T_in_stag, lam
     gd_par = gd.GasDynamicsParameters(k=work_fluid.k, R=work_fluid.R, lam=lam_out, p=p_out, T_stag=T_in_stag)
     p_in_stag = gd_par.p_stag / sigma_out
     return {'T_out_stag': T_in_stag, 'p_in_stag': p_in_stag, 'T_out': gd_par.T, 'p_out_stag': gd_par.p_stag,
-            'c_out': gd_par.c, 'k_gas': work_fluid.k, 'c_p_gas': work_fluid.c_p}
+            'c_out': gd_par.c, 'k': work_fluid.k, 'c_p': work_fluid.c_p}
 
 
 class Outlet:
@@ -342,8 +342,8 @@ class Outlet:
                                        self._input.p_out, self._input.sigma_out, self._input.alpha)
         self._output.c_out = output['c_out']
         self._output.p_in_stag = output['p_in_stag']
-        self._output.c_p_gas = output['c_p_gas']
-        self._output.k_gas = output['k_gas']
+        self._output.c_p_gas = output['c_p']
+        self._output.k_gas = output['k']
         self._output.T_out_stag = output['T_out_stag']
         self._output.T_out = output['T_out']
         self._output.p_out_stag = output['p_out_stag']
