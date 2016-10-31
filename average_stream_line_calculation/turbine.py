@@ -553,6 +553,9 @@ if __name__ == '__main__':
     print(turbine[1].T0_stag)
     print(turbine[1].H0)
     print(turbine[1].c2)
+    print(turbine[1].T_st_stag)
+    print(turbine[1].L_u)
+    print(turbine[1].c2_u)
 
 
 
