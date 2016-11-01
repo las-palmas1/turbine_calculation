@@ -22,7 +22,7 @@ class ProfilingType(enum.Enum):
     ConstantAngle = 1
 
 
-class StageParametersRadialDistribution2:
+class StageParametersRadialDistribution:
     def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
                  c1_av, alpha1_av, T2_stag_av, L_u_av):
         self.profiling_type = profiling_type
@@ -159,14 +159,14 @@ class StageParametersRadialDistribution2:
         y = np.array(np.linspace(r_in, r_out, 100)) / r_av
         deg = np.pi / 180
         x = [par(i) for i in y * r_av]
-        if par_name.find('alpha') != -1 or par_name.find('beta') != -1:
+        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta') != -1:
             x = [i / deg for i in x]
-        # plt.figure(figsize=figsize)
+        plt.figure(figsize=figsize)
         plt.plot(x, y, linewidth=2, color=color)
         plt.xlabel(par_name, fontsize=16)
         plt.ylabel(r'$\frac{r}{r_{av}}$', fontsize=22)
         plt.grid()
-        # plt.show()
+        plt.show()
 
     def plot_velocity_triangles(self, r_rel=(0, 0.5, 1), figsize=(8, 8)):
         r_arr = [0.5 * (self.D1_in + i * (self.D1_out - self.D1_in)) for i in r_rel]
@@ -187,169 +187,9 @@ class StageParametersRadialDistribution2:
             plt.show()
 
 
-class StageParametersRadialDistribution:
-    def __init__(self, profiling_type: ProfilingType, p0_stag, H0, T0_stag, phi, psi, c_p, k, D1_in, D1_av,
-                 D1_out, D2_in, D2_av, D2_out, c1_av, alpha1_av, p2_av, c2_a_av, n):
-        self.profiling_type = profiling_type
-        self.p0_stag = p0_stag
-        self.H0 = H0
-        self.T0_stag = T0_stag
-        self.phi = phi
-        self.psi = psi
-        self.c_p = c_p
-        self.k = k
-        self.D1_in = D1_in
-        self.D1_av = D1_av
-        self.D1_out = D1_out
-        self.D2_in = D2_in
-        self.D2_av = D2_av
-        self.D2_out = D2_out
-        self.c1_av = c1_av
-        self.alpha1_av = alpha1_av
-        self.n = n
-        self.p2_av = p2_av
-        self.c2_a_av = c2_a_av
-        self.R = self.c_p * (self.k - 1) / self.k
-
-    def c1_u(self, r):
-        c1_u_av = self.c1_av * np.cos(self.alpha1_av)
-        if self.profiling_type == ProfilingType.ConstantCirculation:
-            return 0.5 * self.D1_av * c1_u_av / r
-        elif self.profiling_type == ProfilingType.ConstantAngle:
-            return c1_u_av * (0.5 * self.D1_av / r) ** (np.cos(self.alpha1_av) ** 2)
-
-    def c1_a(self, r):
-        c1_a_av = self.c1_av * np.sin(self.alpha1_av)
-        if self.profiling_type == ProfilingType.ConstantCirculation:
-            return c1_a_av
-        elif self.profiling_type == ProfilingType.ConstantAngle:
-            return c1_a_av * (0.5 * self.D1_av / r) ** (np.cos(self.alpha1_av) ** 2)
-
-    def p2(self, r):
-        return self.p2_av
-
-    def c2_a(self, r):
-        return self.c2_a_av
-
-    def c1(self, r):
-        return np.sqrt(self.c1_a(r) ** 2 + self.c1_u(r) ** 2)
-
-    def alpha1(self, r):
-        if self.c1_a(r) / self.c1(r) > 1:
-            raise InvalidStageSizeValue('c1_a must be less than c1')
-        return np.arcsin(self.c1_a(r) / self.c1(r))
-
-    def H_s(self, r):
-        return self.c1(r) ** 2 / (2 * self.phi)
-
-    def p1(self, r):
-        return self.p0_stag * (1 - self.H_s(r) / (self.T0_stag * self.c_p)) ** (self.k / (self.k - 1))
-
-    def T1_ad(self, r):
-        return self.T0_stag - self.H_s(r) / self.c_p
-
-    def T1(self, r):
-        return self.T0_stag - self.H_s(r) * self.phi ** 2 / self.c_p
-
-    def H_l(self, r):
-        return self.c_p * self.T0_stag * (1 - (self.p2(r) / self.p1(r)) ** ((self.k - 1) / self.k))
-
-    def u1(self, r):
-        return 2 * np.pi * r * self.n / 60
-
-    def u2(self, r):
-        return 2 * np.pi * r * self.n / 60
-
-    def w1(self, r):
-        a = self.c1(r) ** 2 + self.u1(r) ** 2 - 2 * self.u1(r) * self.c1(r) * self.alpha1(r)
-        if a < 0:
-            raise InvalidStageSizeValue('w1 can not be calculated')
-        return np.sqrt(self.c1(r) ** 2 + self.u1(r) ** 2 - 2 * self.u1(r) * self.c1(r) * np.cos(self.alpha1(r)))
-
-    def w2(self, r):
-        return self.psi * np.sqrt(self.w1(r) ** 2 + 2 * self.H_l(r) + self.u2(r) ** 2 -
-                                  self.u1(r) ** 2)
-
-    def beta2(self, r):
-        if self.c2_a(r) / self.w2(r) > 1:
-            raise InvalidStageSizeValue('c2_a must be less than w2')
-        return np.arcsin(self.c2_a(r) / self.w2(r))
-
-    def beta1(self, r):
-        if self.c1(r) * np.cos(self.alpha1(r)) - self.u1(r) >= 0:
-            return np.arctan(self.c1_a(r) / (self.c1(r) * np.cos(self.alpha1(r)) - self.u1(r)))
-        else:
-            return np.pi + np.arctan(self.c1_a(r) / (self.c1(r) * np.cos(self.alpha1(r)) - self.u1(r)))
-
-    def c2_u(self, r):
-        return self.w2(r) * np.cos(self.beta2(r)) - self.u2(r)
-
-    def alpha2(self, r):
-        if self.c2_u(r) >= 0:
-            return np.arctan(self.c2_a(r) / self.c2_u(r))
-        else:
-            return np.pi + np.arctan(self.c2_a(r) / self.c2_u(r))
-
-    def c2(self, r):
-        return np.sqrt(self.c2_a(r) ** 2 + self.c2_u(r) ** 2)
-
-    def rho(self, r):
-        return self.H_l(r) * self.T1_ad(r) / (self.H0 * self.T1(r))
-
-    def T2(self, r):
-        return self.T1(r) - (self.w2(r)**2 - self.w1(r)**2 - self.u2(r)**2 + self.u1(r)**2) / (2 * self.c_p)
-
-    def M_c1(self, r):
-        return self.c1(r) / np.sqrt(self.k * self.R * self.T1(r))
-
-    def M_w2(self, r):
-        return self.w2(r) / np.sqrt(self.k * self.R * self.T2(r))
-
-    def T2_stag(self, r):
-        return self.T2(r) + self.c2(r) ** 2 / (2 * self.c_p)
-
-    def L_u(self, r):
-        return self.u1(r) * self.c1_u(r) + self.u2(r) * self.c2_u(r)
-
-    def plot_parameter_distribution(self, par_name: str, figsize=(9, 7), color='blue'):
-        r_in = 0.5 * self.D1_in
-        r_out = 0.5 * self.D1_out
-        r_av = 0.5 * self.D1_av
-        get_atr = object.__getattribute__
-        par = get_atr(self, par_name)
-        y = np.array(np.linspace(r_in, r_out, 100)) / r_av
-        deg = np.pi / 180
-        x = [par(i) for i in y * r_av]
-        if par_name.find('alpha') != -1 or par_name.find('beta') != -1:
-            x = [i / deg for i in x]
-        # plt.figure(figsize=figsize)
-        plt.plot(x, y, linewidth=2, color=color)
-        plt.xlabel(par_name, fontsize=16)
-        plt.ylabel(r'$\frac{r}{r_{av}}$', fontsize=22)
-        plt.grid()
-        # plt.show()
-
-    def plot_velocity_triangles(self, r_rel=(0, 0.5, 1), figsize=(8, 8)):
-        r_arr = [0.5 * (self.D1_in + i * (self.D1_out - self.D1_in)) for i in r_rel]
-        title = [r'$r_{rel} = %s$' % i for i in r_rel]
-        for (n, i) in enumerate(r_arr):
-            plt.figure(figsize=figsize)
-            x_in = np.array([0, -self.c1_u(i), -self.c1_u(i) + self.u1(i), 0])
-            y_in = np.array([self.c1_a(i), 0, 0, self.c1_a(i)])
-            x_out = np.array([0, self.c2_u(i), self.c2_u(i) + self.u2(i), 0])
-            y_out = np.array([self.c1_a(i), self.c1_a(i) - self.c2_a(i), self.c1_a(i) - self.c2_a(i), self.c1_a(i)])
-            plt.plot(x_in, y_in, linewidth=2, color='red', label='inlet')
-            plt.plot(x_out, y_out, linewidth=2, color='blue', label='outlet')
-            plt.xlim(-self.c1_u(i), self.c2_u(i) + self.u2(i))
-            plt.ylim(-max(self.c1_a(i), self.c1_u(i)), max(self.c1_a(i), self.c2_u(i) + self.u2(i)))
-            plt.grid()
-            plt.title(title[n], fontsize=20)
-            plt.legend()
-            plt.show()
-
-
-class BladeProfile:
-    def __init__(self, angle1, angle2, b_a, gamma1_s, gamma1_k, pnt_count: int, r1, s):
+class BladeSection:
+    def __init__(self, angle1=None, angle2=None, b_a=None, gamma1_s=None, gamma1_k=None, pnt_count=20, r1=None,
+                 s2=0.001):
         """
 
         :param angle1: угол лопатки на входе
@@ -359,7 +199,7 @@ class BladeProfile:
         :param gamma1_k:
         :param pnt_count:
         :param r1: рвдиус скругления входной кромки
-        :param s: толщина выходной кромки
+        :param s2: толщина выходной кромки
         """
         self._angle1 = angle1
         self._angle2 = angle2
@@ -368,17 +208,21 @@ class BladeProfile:
         self._gamma1_k = gamma1_k
         self._pnt_count = pnt_count
         self._r1 = r1
-        self._s = s
-        self._compute_coordinates()
+        self._s2 = s2
+        if (self._angle1 is not None) and (self._angle2 is not None) and (self._b_a is not None) and \
+                (self._gamma1_k is not None) and (self._gamma1_s is not None) and (self._pnt_count is not None) and \
+                (self._r1 is not None) and (self._s2 is not None):
+            self._compute_coordinates()
+        self.r_rel = None
 
     @property
-    def s(self) -> int:
-        assert self._s is not None, 's must not be None'
-        return self._s
+    def s2(self) -> int:
+        assert self._s2 is not None, 's2 must not be None'
+        return self._s2
 
-    @s.setter
-    def s(self, value: int):
-        self._s = value
+    @s2.setter
+    def s2(self, value: int):
+        self._s2 = value
         self._compute_coordinates()
 
     @property
@@ -486,11 +330,11 @@ class BladeProfile:
                                                                             self.dir2_av, self.pnt_count)
             self.x_s, self.y_s = self.compute_parabola_coordinates_by_points(0, self.y_av[0] - 0.5 * self.r1, self.b_a,
                                                                              self.y_av[self.pnt_count - 1] -
-                                                                             0.5 * self.s, self.pnt_count,
+                                                                             0.5 * self.s2, self.pnt_count,
                                                                              dir1=self.dir1_s)
             self.x_k, self.y_k = self.compute_parabola_coordinates_by_points(0, self.y_av[0] + 0.5 * self.r1, self.b_a,
                                                                              self.y_av[self.pnt_count - 1] +
-                                                                             0.5 * self.s, self.pnt_count,
+                                                                             0.5 * self.s2, self.pnt_count,
                                                                              dir1=self.dir1_k)
             self.angle2_s = -np.arctan((self.y_s[self.pnt_count - 1] - self.y_s[self.pnt_count - 2]) /
                                        (self.x_s[self.pnt_count - 1] - self.x_s[self.pnt_count - 2])) + np.pi / 2
@@ -503,12 +347,14 @@ class BladeProfile:
 
 
 class StageProfiling(StageParametersRadialDistribution):
-    def __init__(self, profiling_type: ProfilingType, p0_stag, H0, T0_stag, phi, psi, c_p, k, D1_in, D1_av,
-                 D1_out, D2_in, D2_av, D2_out, c1_av, alpha1_av, p2_av, c2_a_av, n, alpha0, pnt_count, b_a_sa,
-                 b_a_rk, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
-        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, H0, T0_stag, phi, psi, c_p, k, D1_in,
-                                                   D1_av, D1_out, D2_in, D2_av, D2_out, c1_av, alpha1_av, p2_av,
-                                                   c2_a_av, n)
+    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, alpha0, D2_in, D2_av, D2_out, pnt_count, b_a_sa, b_a_rk,
+                 r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
+        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, phi, psi, c_p, k, D1_in,
+                                                   D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av)
+        self.D2_in = D2_in
+        self.D2_av = D2_av
+        self.D2_out = D2_out
         self.alpha0 = alpha0
         self.r_rel = r_rel
         self.pnt_count = pnt_count
@@ -530,6 +376,31 @@ class StageProfiling(StageParametersRadialDistribution):
         self.z_rk = None
         self.t_rk_av = None
         self.t_sa_av = None
+        self._sa_sections = [BladeSection(r1=self.r1_sa, s2=self.s2_sa, pnt_count=self.pnt_count, b_a=self.b_a_sa)
+                             for _ in self.r_rel]
+        self._rk_sections = [BladeSection(r1=self.r1_rk, s2=self.s2_rk, pnt_count=self.pnt_count, b_a=self.b_a_rk)
+                             for _ in self.r_rel]
+
+    def __getitem__(self, item):
+        if 0 <= item < len(self.r_rel):
+            return {'sa': self._sa_sections[item], 'rk': self._rk_sections[item]}
+        else:
+            raise IndexError('invalid index')
+
+    def __len__(self):
+        return len(self.r_rel)
+
+    def __iter__(self):
+        self._num = 0
+        return self
+
+    def __next__(self):
+        if self._num < len(self.r_rel):
+            current = {'sa': self._sa_sections[self._num], 'rk': self._rk_sections[self._num]}
+            self._num += 1
+            return current
+        else:
+            raise StopIteration()
 
     @classmethod
     def delta(cls, M, angle1):
@@ -542,19 +413,19 @@ class StageProfiling(StageParametersRadialDistribution):
         if M >= 0.95:
             return 0
         elif 15 * deg <= angle1 <= 20 * deg:
-            M = [0.95, 0.8]
-            delta = [1 / 3 * deg, 5 / 6 * deg]
-            delta_int = interp1d(M, delta)
+            M_arr = np.array([0.95, 0.8])
+            delta = np.array([1 / 3 * deg, 5 / 6 * deg])
+            delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 20 * deg < angle1 <= 30 * deg:
-            M = [0.95, 0.6]
-            delta = [1 / 3 * deg, 1.5 * deg]
-            delta_int = interp1d(M, delta)
+            M_arr = np.array([0.95, 0.6])
+            delta = np.array([1 / 3 * deg, 1.5 * deg])
+            delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 30 * deg < angle1 <= 40 * deg:
-            M = [0.95, 0.6]
-            delta = [1 / 3 * deg, 4 * deg]
-            delta_int = interp1d(M, delta)
+            M_arr= np.array([0.95, 0.6])
+            delta = np.array([1 / 3 * deg, 4 * deg])
+            delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         else:
             return 1 * deg
@@ -579,7 +450,7 @@ class StageProfiling(StageParametersRadialDistribution):
     def beta2_l(self, r):
         return self.beta2(r) - self.delta(self.M_w2(r), self.beta2(r))
 
-    def compute_step(self):
+    def _compute_step(self):
         deg = np.pi / 180
         self.gamma_rk = (70 - 0.127 * (self.beta1(0.5 * self.D2_av) - self.beta2(0.5 * self.D2_av)) / deg -
                          0.0041 * (self.beta1(0.5 * self.D2_av) - self.beta2(0.5 * self.D2_av)) ** 2 / deg ** 2) * deg
@@ -610,44 +481,80 @@ class StageProfiling(StageParametersRadialDistribution):
     def gamma1_s_rk(self, r):
         return self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel)
 
+    def compute_sections_coordinates(self):
+        self._compute_step()
+        r_arr = [0.5 * (self.D1_in + i * (self.D1_out - self.D1_in)) for i in self.r_rel]
+        for n, i in enumerate(r_arr):
+            self._sa_sections[n].angle1 = self.alpha0_l(i)
+            self._sa_sections[n].angle2 = self.alpha1_l(i)
+            self._sa_sections[n].gamma1_k = self.gamma1_k_sa(i)
+            self._sa_sections[n].gamma1_s = self.gamma1_s_sa(i)
+            self._sa_sections[n].r_rel = self.r_rel[n]
+            self._rk_sections[n].angle1 = self.beta1_l(i)
+            self._rk_sections[n].angle2 = self.beta2_l(i)
+            self._rk_sections[n].gamma1_k = self.gamma1_k_rk(i)
+            self._rk_sections[n].gamma1_s = self.gamma1_s_rk(i)
+            self._rk_sections[n].r_rel = self.r_rel[n]
+
+    def plot2d(self, delta_a_sa, pnt_count=50, r_rel=0.5, x0=0, ymax=0.7):
+        r = 0.5 * (self.D1_in + r_rel * (self.D1_out - self.D1_in))
+        t_sa = self.t_sa_av * 2 * r / self.D1_av
+        t_rk = self.t_rk_av * 2 * r / self.D2_av
+        n_sa = round(ymax / t_sa) + 1
+        n_rk = round(ymax / t_rk) + 1
+        y0 = 0
+        sa_section = BladeSection(self.alpha0_l(r), self.alpha1_l(r), self.b_a_sa, self.gamma1_s_sa(r),
+                                  self.gamma1_k_sa(r), pnt_count, self.r1_sa, self.s2_sa)
+        rk_section = BladeSection(self.beta1_l(r), self.beta2_l(r), self.b_a_rk, self.gamma1_s_rk(r),
+                                  self.gamma1_k_rk(r), pnt_count, self.r1_rk, self.s2_rk)
+        for i in range(n_sa):
+            plt.plot(sa_section.x_k + x0, -sa_section.y_k + y0 + t_sa, color='red', linewidth=2)
+            plt.plot(sa_section.x_s + x0, -sa_section.y_s + y0 + t_sa, color='red', linewidth=2)
+            y0 += t_sa
+        y0 = 0
+        for i in range(n_rk):
+            plt.plot(rk_section.x_k + x0 + self.b_a_sa + delta_a_sa, rk_section.y_k + y0, color='blue', linewidth=2)
+            plt.plot(rk_section.x_s + x0 + self.b_a_sa + delta_a_sa, rk_section.y_s + y0, color='blue', linewidth=2)
+            y0 += t_rk
+
 
 if __name__ == '__main__':
-    rad_dist1 = StageParametersRadialDistribution(ProfilingType.ConstantCirculation, 482591.6, 64790, 1167.4, 0.97,
-                                                  0.97, 1184, 1.32, 0.12579, 0.32100, 0.51621, 0.11446, 0.32848,
-                                                  0.542513, 249, 0.8716197, 395993, 183.5, 14687.58)
-    rad_dist2 = StageParametersRadialDistribution(ProfilingType.ConstantAngle, 482591.6, 64790, 1167.4, 0.97,
-                                                  0.97, 1184, 1.32, 0.12579, 0.32100, 0.51621, 0.11446, 0.32848,
-                                                  0.542513, 249, 0.8716197, 395993, 183.5, 14687.58)
-
-    plt.figure()
-    rad_dist1.plot_parameter_distribution('rho', color='red')
-    rad_dist2.plot_parameter_distribution('rho')
-    plt.xlim()
-    plt.show()
-
-    rad_dist3 = StageParametersRadialDistribution2(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
-                                                   1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-                                                   1132.57, 42704.509)
-    rad_dist4 = StageParametersRadialDistribution2(ProfilingType.ConstantAngle, 482591.6, 1167.4, 0.97, 0.97,
-                                                   1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-                                                   1132.57, 42704.509)
-    plt.figure()
-    rad_dist3.plot_parameter_distribution('c2_u', color='red')
-    rad_dist4.plot_parameter_distribution('c2_u')
-    plt.xlim()
-    plt.show()
-    print(rad_dist3.c2_u(rad_dist3.D1_av / 2))
-    # deg = np.pi / 180
-    # bl_prof = BladeProfile(45 * deg, 20 * deg, 0.06, 20 * deg, 15 * deg, 100, 0.003, 0.001)
+    # rad_dist3 = StageParametersRadialDistribution(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
+    #                                               1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
+    #                                               1132.57, 42704.509)
+    # rad_dist4 = StageParametersRadialDistribution(ProfilingType.ConstantAngle, 482591.6, 1167.4, 0.97, 0.97,
+    #                                               1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
+    #                                               1132.57, 42704.509)
+    # plt.figure()
+    # rad_dist3.plot_parameter_distribution('c2_u', color='red')
+    # rad_dist4.plot_parameter_distribution('c2_u')
+    # plt.xlim()
+    # plt.show()
+    # print(rad_dist3.c2_u(rad_dist3.D1_av / 2))
+    deg = np.pi / 180
+    # bl_prof = BladeSection(45 * deg, 20 * deg, 0.06, 20 * deg, 15 * deg, 100, 0.003, 0.001)
     # plt.figure(figsize=(8, 8))
-    # plt.plot(bl_prof.y_av, -bl_prof.x_av, color='black')
-    # plt.plot(bl_prof.y_s, -bl_prof.x_s, color='red',)
-    # plt.plot(bl_prof.y_k, -bl_prof.x_k, color='green')
+    # plt.plot(bl_prof.x_av, bl_prof.y_av, color='black')
+    # plt.plot(bl_prof.x_s, bl_prof.y_s, color='red',)
+    # plt.plot(bl_prof.x_k, bl_prof.y_k, color='green')
     # plt.grid()
     # plt.show()
     # print(bl_prof.gamma2_s / deg)
-    # print(bl_prof.gamma2_k / deg)
-
+    st_prof = StageProfiling(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
+                             1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
+                             1132.57, 42704.509, lambda r: 90 * deg, 0.114460, 0.328487034246,
+                             0.542513308294, 100, 0.05422, 0.05350)
+    st_prof._compute_step()
+    print(st_prof.t_sa_av)
+    print(st_prof.t_rk_av)
+    print(st_prof.z_sa)
+    print(st_prof.z_rk)
+    st_prof.plot_parameter_distribution('w1')
+    st_prof.compute_sections_coordinates()
+    plt.figure()
+    st_prof.plot2d(0.01, ymax=0.2)
+    plt.ylim(0, 0.2)
+    plt.show()
 
 
 
