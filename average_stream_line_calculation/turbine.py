@@ -535,7 +535,7 @@ if __name__ == '__main__':
     # turbine.geom.plot_heat_drop_distribution()
     # print(turbine.geom.c_t)
     # for num, i in enumerate(turbine):
-    #     i.plot_velocity_triangle('Stage %s' % (num + 1))
+    #     i.plot_velocity_triangle('Stage %s2' % (num + 1))
     print(turbine.geom[1].D1 + 2 * turbine.geom[1].l1)
     print(turbine.geom[1].D2 + 2 * turbine.geom[1].l2)
     print(turbine.geom[1].D2 - 2 * turbine.geom[1].l2)
@@ -556,6 +556,8 @@ if __name__ == '__main__':
     print(turbine[1].T_st_stag)
     print(turbine[1].L_u)
     print(turbine[1].c2_u)
+    print(turbine.geom[1].b_sa)
+    print(turbine.geom[1].b_rk)
 
 
 
