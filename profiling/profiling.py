@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
 
-
 log_filename = os.path.join(os.path.dirname(__file__), 'profiling.log')
 logger = func.create_logger(__name__, logging.DEBUG, filename=log_filename, filemode='a',
                             add_console_handler=False)
@@ -24,7 +23,7 @@ class ProfilingType(enum.Enum):
 
 class StageParametersRadialDistribution:
     def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
-                 c1_av, alpha1_av, T2_stag_av, L_u_av):
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av):
         self.profiling_type = profiling_type
         self.p0_stag = p0_stag
         self.T0_stag = T0_stag
@@ -40,6 +39,8 @@ class StageParametersRadialDistribution:
         self.n = n
         self.T2_stag_av = T2_stag_av
         self.L_u_av = L_u_av
+        self.c2_a_av = c2_a_av
+        self.c2_u_av = c2_u_av
         self.R = self.c_p * (self.k - 1) / self.k
 
     def c1_u(self, r):
@@ -88,7 +89,8 @@ class StageParametersRadialDistribution:
     def c2_a(self, r):
         def int_func(r):
             return self.c2_u(r) ** 2 / r
-        return np.sqrt(self.c1_a(0.5 * self.D1_av) ** 2 + self.c1_u(0.5 * self.D1_av) ** 2 - self.c2_u(r) ** 2 -
+
+        return np.sqrt(self.c2_a_av ** 2 + self.c2_u_av ** 2 - self.c2_u(r) ** 2 -
                        2 * quad(int_func, 0.5 * self.D1_av, r)[0])
 
     def c2(self, r):
@@ -130,7 +132,7 @@ class StageParametersRadialDistribution:
         return 0.5 * ((self.w2(r) / self.psi) ** 2 - self.w1(r) ** 2)
 
     def p2(self, r):
-        return self.p1(r) * (1 - self.H_l(r) / (self.c_p * self.T1(r))) # ** (self.k / (self.k - 1))
+        return self.p1(r) * (1 - self.H_l(r) / (self.c_p * self.T1(r)))  # ** (self.k / (self.k - 1))
 
     def T2(self, r):
         return self.T2_stag(r) - self.c2(r) ** 2 / (2 * self.c_p)
@@ -159,7 +161,7 @@ class StageParametersRadialDistribution:
         y = np.array(np.linspace(r_in, r_out, 100)) / r_av
         deg = np.pi / 180
         x = [par(i) for i in y * r_av]
-        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta_f') != -1 or \
+        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta') != -1 or \
                         par_name.find('gamma') != -1:
             x = [i / deg for i in x]
         plt.figure(figsize=figsize)
@@ -348,11 +350,46 @@ class BladeSection:
 
 
 class StageProfiling(StageParametersRadialDistribution):
+    deg = np.pi / deg
+
     def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
-                 c1_av, alpha1_av, T2_stag_av, L_u_av, alpha0, pnt_count, b_a_sa, b_a_rk,
-                 r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, alpha0, pnt_count, b_a_sa, b_a_rk,
+                 r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001,
+                 mindif_alpha0_l_gamma1_s_sa=17 * deg, mindif_beta1_l_gamma1_s_rk=15*deg):
+        """
+
+        :param profiling_type:
+        :param p0_stag:
+        :param T0_stag:
+        :param phi:
+        :param psi:
+        :param c_p:
+        :param k:
+        :param D1_in:
+        :param D1_av:
+        :param D1_out:
+        :param n:
+        :param c1_av:
+        :param alpha1_av:
+        :param T2_stag_av:
+        :param L_u_av:
+        :param c2_a_av:
+        :param c2_u_av:
+        :param alpha0: угол входа в СА в зависимости от радиуса
+        :param pnt_count:  количесиство точек для нахождения координат сторон профиля в каждом сечении
+        :param b_a_sa:
+        :param b_a_rk:
+        :param r_rel: относительные радиусы сечений для нахождения координат
+        :param gamma1_k_sa_rel: отношение углов gamma1_k и gamma1 для СА
+        :param gamma1_k_rk_rel: отношение углов gamma1_k и gamma1 для РК
+        :param s2_sa: толщина выходной кромки СА
+        :param s2_rk: толщина выходной кромки РК
+        :param mindif_alpha0_l_gamma1_s_sa: минимальная разность углов alpha0_l и gamma1_s_sa
+        :param mindif_beta1_l_gamma1_s_rk: минимальная разность углов beta1_l и gamma1_s_rk
+        """
         StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, phi, psi, c_p, k, D1_in,
-                                                   D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av)
+                                                   D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av,
+                                                   c2_u_av)
         self.alpha0 = alpha0
         self.r_rel = r_rel
         self.pnt_count = pnt_count
@@ -364,6 +401,8 @@ class StageProfiling(StageParametersRadialDistribution):
         self.s2_rk = s2_rk
         self.r1_sa = 0.04 * self.b_a_sa
         self.r1_rk = 0.04 * self.b_a_rk
+        self.mindif_alpha0_l_gamma1_s_sa = mindif_alpha0_l_gamma1_s_sa
+        self.mindif_beta1_l_gamma1_s_rk = mindif_beta1_l_gamma1_s_rk
         self.gamma_sa = None
         self.gamma_rk = None
         self.t_rel_sa = None
@@ -411,17 +450,17 @@ class StageProfiling(StageParametersRadialDistribution):
         if M >= 0.95:
             return 0
         elif 15 * deg <= angle1 <= 20 * deg:
-            M_arr = np.array([0.95, 0.8])
-            delta = np.array([1 / 3 * deg, 5 / 6 * deg])
+            M_arr = np.array([0.95, 0.8, 0.3])
+            delta = np.array([1 / 3 * deg, 5 / 6 * deg, 8 / 6 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 20 * deg < angle1 <= 30 * deg:
-            M_arr = np.array([0.95, 0.6])
-            delta = np.array([1 / 3 * deg, 1.5 * deg])
+            M_arr = np.array([0.95, 0.6, 0.3])
+            delta = np.array([1 / 3 * deg, 1.5 * deg, 2 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 30 * deg < angle1 <= 40 * deg:
-            M_arr= np.array([0.95, 0.6, 0.2])
+            M_arr = np.array([0.95, 0.6, 0.2])
             delta = np.array([1 / 3 * deg, 4 * deg, 6 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
@@ -463,8 +502,8 @@ class StageProfiling(StageParametersRadialDistribution):
                                np.sin(self.beta1(0.5 * self.D1_av)) / np.sin(self.beta2(0.5 * self.D1_av))) ** \
                               (1 / 3) * (1 - 0.11)
         self.t_rel_sa = 0.45 * (180 / (180 - (self.alpha0(0.5 * self.D1_av) + self.alpha1(0.5 * self.D1_av)) / deg) *
-                               np.sin(self.alpha0(0.5 * self.D1_av)) / np.sin(self.alpha1(0.5 * self.D1_av))) ** \
-                              (1 / 3) * (1 - 0.13)
+                                np.sin(self.alpha0(0.5 * self.D1_av)) / np.sin(self.alpha1(0.5 * self.D1_av))) ** \
+                               (1 / 3) * (1 - 0.13)
         if self.rho(0.5 * self.D1_av) > 0.1:
             if self.t_rel_rk < 0.8:
                 self.t_rel_rk = 0.8
@@ -488,13 +527,21 @@ class StageProfiling(StageParametersRadialDistribution):
         return self.gamma1(self.alpha0(r)) * self.gamma1_k_sa_rel
 
     def gamma1_s_sa(self, r):
-        return self.gamma1(self.alpha0(r)) * (1 - self.gamma1_k_sa_rel)
+        deg = np.pi / 180
+        if self.alpha0_l(r) - self.gamma1(self.alpha0(r)) * (1 - self.gamma1_k_sa_rel) >= 17 * deg:
+            return self.gamma1(self.alpha0(r)) * (1 - self.gamma1_k_sa_rel)
+        else:
+            return self.alpha0_l(r) - 17 * deg
 
     def gamma1_k_rk(self, r):
         return self.gamma1(self.beta1(r)) * self.gamma1_k_rk_rel
 
     def gamma1_s_rk(self, r):
-        return self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel)
+        deg = np.pi / 180
+        if self.beta1_l(r) - self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel) >= 15 * deg:
+            return self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel)
+        else:
+            return self.beta1_l(r) - 15 * deg
 
     def compute_sections_coordinates(self):
         self._compute_step()
@@ -535,13 +582,35 @@ class StageProfiling(StageParametersRadialDistribution):
 
 def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynamics: StageGasDynamics,
                                prof_type: ProfilingType, alpha0, pnt_count=20, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25,
-                               gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
+                               gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001,
+                               mindif_alpha0_l_gamma1_s_sa=17 * np.pi / 180,
+                               mindif_beta1_l_gamma1_s_rk=15*np.pi / 180) -> StageProfiling:
+    """
+
+    :param stage_geom:
+    :param stage_gas_dynamics:
+    :param prof_type:
+    :param alpha0: угол входа в СА в зависимости от радиуса
+    :param pnt_count:  количесиство точек для нахождения координат сторон профиля в каждом сечении
+    :param b_a_sa:
+    :param b_a_rk:
+    :param r_rel: относительные радиусы сечений для нахождения координат
+    :param gamma1_k_sa_rel: отношение углов gamma1_k и gamma1 для СА
+    :param gamma1_k_rk_rel: отношение углов gamma1_k и gamma1 для РК
+    :param s2_sa: толщина выходной кромки СА
+    :param s2_rk: толщина выходной кромки РК
+    :param mindif_alpha0_l_gamma1_s_sa: минимальная разность углов alpha0_l и gamma1_s_sa
+    :param mindif_beta1_l_gamma1_s_rk: минимальная разность углов beta1_l и gamma1_s_rk
+    :return: StageProfiling
+    """
     result = StageProfiling(prof_type, stage_gas_dynamics.p0_stag, stage_gas_dynamics.T0_stag, stage_geom.phi,
                             stage_geom.psi, stage_gas_dynamics.c_p_gas, stage_gas_dynamics.k_gas,
                             stage_geom.D1 - stage_geom.l1, stage_geom.D1, stage_geom.D1 + stage_geom.l1,
                             stage_gas_dynamics.n, stage_gas_dynamics.c1, stage_gas_dynamics.alpha1,
-                            stage_gas_dynamics.T_st_stag, stage_gas_dynamics.L_u, alpha0, pnt_count, stage_geom.b_sa,
-                            stage_geom.b_rk, r_rel, gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk)
+                            stage_gas_dynamics.T_st_stag, stage_gas_dynamics.L_u, stage_gas_dynamics.c2_a,
+                            stage_gas_dynamics.c2_u, alpha0, pnt_count, stage_geom.b_sa, stage_geom.b_rk, r_rel,
+                            gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk, mindif_alpha0_l_gamma1_s_sa,
+                            mindif_beta1_l_gamma1_s_rk)
     return result
 
 
@@ -632,6 +701,7 @@ class TurbineProfiling:
 
     def plot2d(self, figsize=(10, 8), pnt_count=50, r_rel=0.5, ymax=0.7):
         plt.figure(figsize=figsize)
+        plt.title(r'$r_{rel} = %s$' % r_rel, fontsize=20)
         x0 = 0
         for i in range(len(self)):
             self[i].plot2d(self._turbine.geom[i].delta_a_sa, pnt_count, r_rel, x0, ymax)
@@ -641,43 +711,8 @@ class TurbineProfiling:
         plt.grid()
         plt.show()
 
+
 if __name__ == '__main__':
-    # rad_dist3 = StageParametersRadialDistribution(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
-    #                                               1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-    #                                               1132.57, 42704.509)
-    # rad_dist4 = StageParametersRadialDistribution(ProfilingType.ConstantAngle, 482591.6, 1167.4, 0.97, 0.97,
-    #                                               1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-    #                                               1132.57, 42704.509)
-    # plt.figure()
-    # rad_dist3.plot_parameter_distribution('c2_u', color='red')
-    # rad_dist4.plot_parameter_distribution('c2_u')
-    # plt.xlim()
-    # plt.show()
-    # print(rad_dist3.c2_u(rad_dist3.D1_av / 2))
-    # deg = np.pi / 180
-    # bl_prof = BladeSection(45 * deg, 20 * deg, 0.06, 20 * deg, 15 * deg, 100, 0.003, 0.001)
-    # plt.figure(figsize=(8, 8))
-    # plt.plot(bl_prof.x_av, bl_prof.y_av, color='black')
-    # plt.plot(bl_prof.x_s, bl_prof.y_s, color='red',)
-    # plt.plot(bl_prof.x_k, bl_prof.y_k, color='green')
-    # plt.grid()
-    # plt.show()
-    # print(bl_prof.gamma2_s / deg)
-    # st_prof = StageProfiling(ProfilingType.ConstantAngle, 482591.6, 1167.4, 0.97, 0.97,
-    #                          1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-    #                          1132.57, 42704.509, lambda r: 90 * deg, 0.114460, 0.328487034246,
-    #                          0.542513308294, 100, 0.05422, 0.05350)
-    # st_prof._compute_step()
-    # print(st_prof.t_sa_av)
-    # print(st_prof.t_rk_av)
-    # print(st_prof.z_sa)
-    # print(st_prof.z_rk)
-    # st_prof.plot_parameter_distribution('w1')
-    # st_prof.compute_sections_coordinates()
-    # plt.figure()
-    # st_prof.plot2d(0.01, ymax=0.2)
-    # plt.ylim(0, 0.2)
-    # plt.show()
     deg = np.pi / 180
     turbine = Turbine(TurbineType.Compressor, gamma_av=4 * deg, gamma_sum=10 * deg)
     turbine.alpha11 = 17 * deg
@@ -709,17 +744,12 @@ if __name__ == '__main__':
     turbine_profiling[0].gamma1_k_rk_rel = 0.45
     turbine_profiling.compute_profile()
     turbine_profiling[0].plot_parameter_distribution('gamma1_s_rk')
-    turbine_profiling[0].plot_parameter_distribution('delta')
-    turbine_profiling.plot2d(r_rel=1)
+    turbine_profiling[1].plot_parameter_distribution('alpha0_l')
+    turbine_profiling[1].plot_parameter_distribution('gamma1_s_sa')
+    turbine_profiling.plot2d(r_rel=0)
     for i in turbine_profiling:
-        print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg, i.gamma1_k_sa(0.5 * i.D1_in) / deg)
-        print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg, i.beta1_l(0.5 * i.D1_av)/ deg)
+        print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg,
+              i.gamma1_k_sa(0.5 * i.D1_in) / deg)
+        print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg,
+              i.beta1_l(0.5 * i.D1_av) / deg)
     turbine_profiling[0].plot_velocity_triangles()
-
-
-
-
-
-
-
-
