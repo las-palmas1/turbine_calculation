@@ -36,7 +36,7 @@ class StageGasDynamics:
         :param g_lk: относительный расход утечек в концевых лабиринтах
         :param g_ld: относительный расход перетечек в лабиринтных уплотнениях сопловых диафрагм
         :param g_lb: относительный расход перетечек поверх бондажа рабочих лопаток
-        :param kwargs: H0, p_t, L_t, eta_t0
+        :param kwargs: H0, p2, L_t, eta_t0
         """
         self._T0_stag = T0_stag
         self._p0_stag = p0_stag
@@ -63,9 +63,9 @@ class StageGasDynamics:
             self._p2 = None
             self._L_t = None
             self._eta_t0 = None
-        elif 'p2_av' in kwargs:
+        elif 'p2' in kwargs:
             self._H0 = None
-            self._p2 = kwargs['p2_av']
+            self._p2 = kwargs['p2']
             self._L_t = None
             self._eta_t0 = None
         elif ('L_t' in kwargs) and ('eta_t0' in kwargs):
@@ -74,7 +74,7 @@ class StageGasDynamics:
             self._H0 = None
             self._p2 = None
         else:
-            assert False, 'H0 or p2_av or (L_t and eta_t0) must be set'
+            assert False, 'H0 or p2 or (L_t and eta_t0) must be set'
         self._stage_calculation()
 
     @property
@@ -151,14 +151,14 @@ class StageGasDynamics:
 
     @property
     def p2(self):
-        if 'p2_av' in self._kwargs:
-            assert self._p2 is not None, 'p2_av must not be None'
+        if 'p2' in self._kwargs:
+            assert self._p2 is not None, 'p2 must not be None'
         return self._p2
 
     @p2.setter
     def p2(self, value):
         self._p2 = value
-        if 'p2_av' in self._kwargs:
+        if 'p2' in self._kwargs:
             self._stage_calculation()
 
     @property
@@ -300,7 +300,7 @@ class StageGasDynamics:
         logger.info('%s _stage_calculation' % self.str())
         if 'H0' in self._kwargs:
             self._specified_heat_drop_calculation()
-        elif 'p2_av' in self._kwargs:
+        elif 'p2' in self._kwargs:
             self._specified_outlet_pressure_calculation()
         elif 'L_t' in self._kwargs and 'eta_t0' in self._kwargs:
             self._specified_work_calculation()
@@ -384,7 +384,7 @@ class StageGasDynamics:
         self.T2_ad = self.T1 - self.H_l / self.c_p_gas
         if ('H0' in self._kwargs) or ('L_t' in self._kwargs and 'eta_t0' in self._kwargs):
             self.p2 = self.p1 * (self.T2_ad / self.T1) ** (self.k_gas / (self.k_gas - 1))
-        elif 'p2_av' in self._kwargs:
+        elif 'p2' in self._kwargs:
             self.p2_check = self.p1 * (self.T2_ad / self.T1) ** (self.k_gas / (self.k_gas - 1))
         self.rho2 = self.p2 / (self.work_fluid.R * self.T2)
         self.A2_a = np.pi * self.D2 * self.l2
@@ -421,7 +421,7 @@ class StageGasDynamics:
         self.zeta_tv = self.h_tv / self.H0
         self.eta_t = self.eta_t_touch - self.zeta_tv
         self.eta_l = self.eta_l_touch - self.zeta_tv
-        if ('H0' in self._kwargs) or ('p2_av' in self._kwargs):
+        if ('H0' in self._kwargs) or ('p2' in self._kwargs):
             self.L_t = self.H0 * self.eta_t
             logger.debug('%s _compute_stage_parameters L_t = %s' % (self.str(), self.L_t))
             # удельная работа ступени, отнесенная к расходу через СА первой ступени с учетом потерь из-за утечек

@@ -9,6 +9,7 @@ from average_streamline_calculation.turbine_stage_gas_dynamics import StageGasDy
 from enum import Enum
 from scipy.interpolate import interp1d
 import os
+import pickle as pk
 
 log_filename = os.path.join(os.path.dirname(__file__), 'average_streamline_calculation.log')
 logger = func.create_logger(__name__, logging.DEBUG, filename=log_filename, filemode='a',
@@ -174,6 +175,11 @@ class Turbine:
         self.eta_t_stag = self.L_t_sum / self.H_t_stag
         self.eta_m = 0.99
         self.N = self.L_t_sum * self.G_turbine * self.eta_m
+
+    def save(self, filename='average_streamline_calculation_results'):
+        file = open(os.path.join(os.path.dirname(__file__), filename), 'wb')
+        pk.dump(self, file)
+        file.close()
 
     @property
     def first(self) -> StageGasDynamics:
@@ -531,7 +537,7 @@ if __name__ == '__main__':
     turbine.compute_geometry()
     turbine.set_rho()
     turbine.compute_stages_gas_dynamics()
-    # turbine.geom.plot_geometry()
+    turbine.geom.plot_geometry()
     # turbine.geom.plot_heat_drop_distribution()
     # print(turbine.geom.c_t)
     # for num, i in enumerate(turbine):
