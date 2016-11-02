@@ -1,7 +1,7 @@
 import logging
 import os
 import functions as func
-from average_streamline_calculation.turbine import Turbine
+from average_streamline_calculation.turbine import Turbine, TurbineType
 from average_streamline_calculation.turbine_stage_geometry import StageGeomAndHeatDrop, InvalidStageSizeValue
 from average_streamline_calculation.turbine_stage_gas_dynamics import StageGasDynamics
 import enum
@@ -159,7 +159,8 @@ class StageParametersRadialDistribution:
         y = np.array(np.linspace(r_in, r_out, 100)) / r_av
         deg = np.pi / 180
         x = [par(i) for i in y * r_av]
-        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta') != -1:
+        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta_f') != -1 or \
+                        par_name.find('gamma') != -1:
             x = [i / deg for i in x]
         plt.figure(figsize=figsize)
         plt.plot(x, y, linewidth=2, color=color)
@@ -348,13 +349,10 @@ class BladeSection:
 
 class StageProfiling(StageParametersRadialDistribution):
     def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
-                 c1_av, alpha1_av, T2_stag_av, L_u_av, alpha0, D2_in, D2_av, D2_out, pnt_count, b_a_sa, b_a_rk,
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, alpha0, pnt_count, b_a_sa, b_a_rk,
                  r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
         StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, phi, psi, c_p, k, D1_in,
                                                    D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av)
-        self.D2_in = D2_in
-        self.D2_av = D2_av
-        self.D2_out = D2_out
         self.alpha0 = alpha0
         self.r_rel = r_rel
         self.pnt_count = pnt_count
@@ -403,7 +401,7 @@ class StageProfiling(StageParametersRadialDistribution):
             raise StopIteration()
 
     @classmethod
-    def delta(cls, M, angle1):
+    def delta_f(cls, M, angle1):
         """
         :param M: число Маха
         :return:
@@ -423,8 +421,8 @@ class StageProfiling(StageParametersRadialDistribution):
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 30 * deg < angle1 <= 40 * deg:
-            M_arr= np.array([0.95, 0.6])
-            delta = np.array([1 / 3 * deg, 4 * deg])
+            M_arr= np.array([0.95, 0.6, 0.2])
+            delta = np.array([1 / 3 * deg, 4 * deg, 6 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         else:
@@ -433,40 +431,57 @@ class StageProfiling(StageParametersRadialDistribution):
     @classmethod
     def gamma1(cls, angle1):
         deg = np.pi / 180
-        angle1_arr = np.array([10, 30, 150]) * deg
-        gamma1_arr = np.array([55, 45, 10]) * deg
+        angle1_arr = np.array([10, 150]) * deg
+        gamma1_arr = np.array([25, 10]) * deg
         gamma1_int = interp1d(angle1_arr, gamma1_arr)
         return gamma1_int(angle1)
+
+    def delta(self, r):
+        return self.delta_f(self.M_c1(r), self.alpha1(r))
 
     def alpha0_l(self, r):
         return self.alpha0(r)
 
     def alpha1_l(self, r):
-        return self.alpha1(r) - self.delta(self.M_c1(r), self.alpha1(r))
+        return self.alpha1(r) - self.delta_f(self.M_c1(r), self.alpha1(r))
 
     def beta1_l(self, r):
         return self.beta1(r)
 
     def beta2_l(self, r):
-        return self.beta2(r) - self.delta(self.M_w2(r), self.beta2(r))
+        return self.beta2(r) - self.delta_f(self.M_w2(r), self.beta2(r))
 
     def _compute_step(self):
         deg = np.pi / 180
-        self.gamma_rk = (70 - 0.127 * (self.beta1(0.5 * self.D2_av) - self.beta2(0.5 * self.D2_av)) / deg -
-                         0.0041 * (self.beta1(0.5 * self.D2_av) - self.beta2(0.5 * self.D2_av)) ** 2 / deg ** 2) * deg
+        self.gamma_rk = (70 - 0.127 * (self.beta1(0.5 * self.D1_av) - self.beta2(0.5 * self.D1_av)) / deg -
+                         0.0041 * (self.beta1(0.5 * self.D1_av) - self.beta2(0.5 * self.D1_av)) ** 2 / deg ** 2) * deg
         self.gamma_sa = (70 - 0.127 * (self.alpha0(0.5 * self.D1_av) - self.alpha1(0.5 * self.D1_av)) / deg -
                          0.0041 * (self.alpha0(0.5 * self.D1_av) - self.alpha1(0.5 * self.D1_av)) ** 2 / deg ** 2) * deg
         self.b_rk = self.b_a_rk / np.sin(self.gamma_rk)
         self.b_sa = self.b_a_sa / np.sin(self.gamma_sa)
-        self.t_rel_rk = 0.6 * (180 / (180 - (self.beta1(0.5 * self.D2_av) + self.beta2(0.5 * self.D2_av)) / deg) *
-                               np.sin(self.beta1(0.5 * self.D2_av)) / np.sin(self.beta2(0.5 * self.D2_av))) ** \
-                              (1 / 3) * (1 - 0.13)
-        self.t_rel_sa = 0.6 * (180 / (180 - (self.alpha0(0.5 * self.D1_av) + self.alpha1(0.5 * self.D1_av)) / deg) *
+        self.t_rel_rk = 0.6 * (180 / (180 - (self.beta1(0.5 * self.D1_av) + self.beta2(0.5 * self.D1_av)) / deg) *
+                               np.sin(self.beta1(0.5 * self.D1_av)) / np.sin(self.beta2(0.5 * self.D1_av))) ** \
+                              (1 / 3) * (1 - 0.11)
+        self.t_rel_sa = 0.45 * (180 / (180 - (self.alpha0(0.5 * self.D1_av) + self.alpha1(0.5 * self.D1_av)) / deg) *
                                np.sin(self.alpha0(0.5 * self.D1_av)) / np.sin(self.alpha1(0.5 * self.D1_av))) ** \
-                              (1 / 3) * (1 - 0.15)
-        self.z_rk = int(np.pi * self.D2_av / (self.t_rel_rk * self.b_rk))
+                              (1 / 3) * (1 - 0.13)
+        if self.rho(0.5 * self.D1_av) > 0.1:
+            if self.t_rel_rk < 0.8:
+                self.t_rel_rk = 0.8
+            elif self.t_rel_rk > 1.0:
+                self.t_rel_rk = 1.0
+        elif self.rho(0.5 * self.D1_av) < 0.1:
+            if self.t_rel_rk < 0.65:
+                self.t_rel_rk = 0.65
+            elif self.t_rel_rk > 0.85:
+                self.t_rel_rk = 0.85
+        if self.t_rel_sa < 0.8:
+            self.t_rel_sa = 0.8
+        elif self.t_rel_sa > 1.0:
+            self.t_rel_sa = 1.0
+        self.z_rk = int(np.pi * self.D1_av / (self.t_rel_rk * self.b_rk))
         self.z_sa = int(np.pi * self.D1_av / (self.t_rel_sa * self.b_sa))
-        self.t_rk_av = np.pi * self.D2_av / self.z_rk
+        self.t_rk_av = np.pi * self.D1_av / self.z_rk
         self.t_sa_av = np.pi * self.D1_av / self.z_sa
 
     def gamma1_k_sa(self, r):
@@ -499,9 +514,9 @@ class StageProfiling(StageParametersRadialDistribution):
     def plot2d(self, delta_a_sa, pnt_count=50, r_rel=0.5, x0=0, ymax=0.7):
         r = 0.5 * (self.D1_in + r_rel * (self.D1_out - self.D1_in))
         t_sa = self.t_sa_av * 2 * r / self.D1_av
-        t_rk = self.t_rk_av * 2 * r / self.D2_av
-        n_sa = round(ymax / t_sa) + 1
-        n_rk = round(ymax / t_rk) + 1
+        t_rk = self.t_rk_av * 2 * r / self.D1_av
+        n_sa = int(round(ymax / t_sa)) + 1
+        n_rk = int(round(ymax / t_rk)) + 1
         y0 = 0
         sa_section = BladeSection(self.alpha0_l(r), self.alpha1_l(r), self.b_a_sa, self.gamma1_s_sa(r),
                                   self.gamma1_k_sa(r), pnt_count, self.r1_sa, self.s2_sa)
@@ -518,6 +533,114 @@ class StageProfiling(StageParametersRadialDistribution):
             y0 += t_rk
 
 
+def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynamics: StageGasDynamics,
+                               prof_type: ProfilingType, alpha0, pnt_count=20, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25,
+                               gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001):
+    result = StageProfiling(prof_type, stage_gas_dynamics.p0_stag, stage_gas_dynamics.T0_stag, stage_geom.phi,
+                            stage_geom.psi, stage_gas_dynamics.c_p_gas, stage_gas_dynamics.k_gas,
+                            stage_geom.D1 - stage_geom.l1, stage_geom.D1, stage_geom.D1 + stage_geom.l1,
+                            stage_gas_dynamics.n, stage_gas_dynamics.c1, stage_gas_dynamics.alpha1,
+                            stage_gas_dynamics.T_st_stag, stage_gas_dynamics.L_u, alpha0, pnt_count, stage_geom.b_sa,
+                            stage_geom.b_rk, r_rel, gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk)
+    return result
+
+
+class TurbineProfiling:
+    def __init__(self, turbine: Turbine, profiling_type: ProfilingType, pnt_count=20, r_rel=(0, 0.5, 1)):
+        self._turbine = turbine
+        self._stages_profile = []
+        self._profiling_type = profiling_type
+        self._pnt_count = pnt_count
+        self._r_rel = r_rel
+        for i in range(len(turbine)):
+            deg = np.pi / 180
+            if i == 0:
+                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, lambda r: 90 * deg,
+                                                      pnt_count=pnt_count, r_rel=r_rel)
+                self._stages_profile.append(stage_pr)
+            else:
+                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, self[i - 1].alpha2,
+                                                      pnt_count=pnt_count, r_rel=r_rel)
+                self._stages_profile.append(stage_pr)
+
+    @property
+    def r_rel(self) -> tuple:
+        return self._r_rel
+
+    @r_rel.setter
+    def r_rel(self, value: tuple):
+        self._r_rel = value
+        for i in self:
+            i.r_rel = value
+
+    @property
+    def pnt_count(self):
+        return self._pnt_count
+
+    @pnt_count.setter
+    def pnt_count(self, value):
+        self._pnt_count = value
+        for i in self:
+            i.pnt_count = value
+
+    @property
+    def profiling_type(self) -> ProfilingType:
+        return self._profiling_type
+
+    @profiling_type.setter
+    def profiling_type(self, value: ProfilingType):
+        self._profiling_type = value
+        for i in self:
+            i.profiling_type = value
+
+    def __getitem__(self, item) -> StageProfiling:
+        if 0 <= item < self._turbine.stage_number:
+            return self._stages_profile[item]
+        else:
+            raise IndexError('invalid index')
+
+    def __len__(self):
+        return self._turbine.stage_number
+
+    def __iter__(self):
+        self._num = 0
+        return self
+
+    def __next__(self) -> StageProfiling:
+        if self._num < self._turbine.stage_number:
+            current = self._stages_profile[self._num]
+            self._num += 1
+            return current
+        else:
+            raise StopIteration()
+
+    def set_gamma1_k_rel(self, gamma1_k_sa_rel, gamma1_k_rk_rel):
+        """Задает величину gamma1_k / gamma1 для СА и РК всех ступеней"""
+        for i in self:
+            i.gamma1_k_sa_rel = gamma1_k_sa_rel
+            i.gamma1_k_rk_rel = gamma1_k_rk_rel
+
+    def set_edge_thickness(self, s2_sa, s2_rk):
+        """Задает толщину выходных кромок лопаток СА и РК на всех ступенях"""
+        for i in self:
+            i.s2_sa = s2_sa
+            i.s2_rk = s2_rk
+
+    def compute_profile(self):
+        for i in self:
+            i.compute_sections_coordinates()
+
+    def plot2d(self, figsize=(10, 8), pnt_count=50, r_rel=0.5, ymax=0.7):
+        plt.figure(figsize=figsize)
+        x0 = 0
+        for i in range(len(self)):
+            self[i].plot2d(self._turbine.geom[i].delta_a_sa, pnt_count, r_rel, x0, ymax)
+            x0 += self._turbine.geom[i].b_sa + self._turbine.geom[i].b_rk + self._turbine.geom[i].delta_a_sa + \
+                  self._turbine.geom[i].delta_a_rk
+        plt.ylim(0, ymax)
+        plt.grid()
+        plt.show()
+
 if __name__ == '__main__':
     # rad_dist3 = StageParametersRadialDistribution(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
     #                                               1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
@@ -531,7 +654,7 @@ if __name__ == '__main__':
     # plt.xlim()
     # plt.show()
     # print(rad_dist3.c2_u(rad_dist3.D1_av / 2))
-    deg = np.pi / 180
+    # deg = np.pi / 180
     # bl_prof = BladeSection(45 * deg, 20 * deg, 0.06, 20 * deg, 15 * deg, 100, 0.003, 0.001)
     # plt.figure(figsize=(8, 8))
     # plt.plot(bl_prof.x_av, bl_prof.y_av, color='black')
@@ -540,21 +663,59 @@ if __name__ == '__main__':
     # plt.grid()
     # plt.show()
     # print(bl_prof.gamma2_s / deg)
-    st_prof = StageProfiling(ProfilingType.ConstantCirculation, 482591.6, 1167.4, 0.97, 0.97,
-                             1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
-                             1132.57, 42704.509, lambda r: 90 * deg, 0.114460, 0.328487034246,
-                             0.542513308294, 100, 0.05422, 0.05350)
-    st_prof._compute_step()
-    print(st_prof.t_sa_av)
-    print(st_prof.t_rk_av)
-    print(st_prof.z_sa)
-    print(st_prof.z_rk)
-    st_prof.plot_parameter_distribution('w1')
-    st_prof.compute_sections_coordinates()
-    plt.figure()
-    st_prof.plot2d(0.01, ymax=0.2)
-    plt.ylim(0, 0.2)
-    plt.show()
+    # st_prof = StageProfiling(ProfilingType.ConstantAngle, 482591.6, 1167.4, 0.97, 0.97,
+    #                          1184, 1.32, 0.12579, 0.32100, 0.51621, 14687.58, 249, 0.8716197,
+    #                          1132.57, 42704.509, lambda r: 90 * deg, 0.114460, 0.328487034246,
+    #                          0.542513308294, 100, 0.05422, 0.05350)
+    # st_prof._compute_step()
+    # print(st_prof.t_sa_av)
+    # print(st_prof.t_rk_av)
+    # print(st_prof.z_sa)
+    # print(st_prof.z_rk)
+    # st_prof.plot_parameter_distribution('w1')
+    # st_prof.compute_sections_coordinates()
+    # plt.figure()
+    # st_prof.plot2d(0.01, ymax=0.2)
+    # plt.ylim(0, 0.2)
+    # plt.show()
+    deg = np.pi / 180
+    turbine = Turbine(TurbineType.Compressor, gamma_av=4 * deg, gamma_sum=10 * deg)
+    turbine.alpha11 = 17 * deg
+    turbine.alpha_air = 2.87
+    turbine.c21_init = 250
+    turbine.eta_t_stag_cycle = 0.91
+    turbine.G_turbine = 25
+    turbine.H01_init = 150e3
+    turbine.H_t_stag_cycle = 350e3
+    turbine.k_n = 6.8
+    turbine.l1_D1_ratio = 1 / 4
+    turbine.L_t_cycle = 320e3
+    turbine.n_rel = 0.9
+    turbine.p_g_stag = 12e5
+    turbine.T_g_stag = 1400
+    turbine.T_t_stag_cycle = 500
+    turbine.p_t_stag_cycle = 100e3
+    turbine.phi1 = 0.97
+    turbine.sigma_l = 200e6
+    turbine.stage_number = 2
+    turbine.set_delta_a_b_ratio(0.22, 0)
+    turbine.set_l_b_ratio(1.8, 0.2, 0.9)
+    turbine.compute_geometry()
+    turbine.set_rho()
+    turbine.compute_stages_gas_dynamics()
+
+    turbine_profiling = TurbineProfiling(turbine, ProfilingType.ConstantAngle)
+    turbine_profiling.set_gamma1_k_rel(0.25, 0.35)
+    turbine_profiling[0].gamma1_k_rk_rel = 0.45
+    turbine_profiling.compute_profile()
+    turbine_profiling[0].plot_parameter_distribution('gamma1_s_rk')
+    turbine_profiling[0].plot_parameter_distribution('delta')
+    turbine_profiling.plot2d(r_rel=1)
+    for i in turbine_profiling:
+        print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg, i.gamma1_k_sa(0.5 * i.D1_in) / deg)
+        print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg, i.beta1_l(0.5 * i.D1_av)/ deg)
+    turbine_profiling[0].plot_velocity_triangles()
+
 
 
 
