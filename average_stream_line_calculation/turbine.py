@@ -117,10 +117,13 @@ class Turbine:
         except AssertionError:
             pass
 
-    def compute_geometry(self):
+    def compute_geometry(self, compute_heat_drop_auto=True):
         logger.info('%s compute_geometry' % self.str())
-        self.geom.compute_output()
-        specify_h01(self.geom)
+        self.geom.compute_output(compute_heat_drop_auto=compute_heat_drop_auto)
+        if compute_heat_drop_auto is True:
+            specify_h01(self.geom)
+        else:
+            pass
 
     def compute_stages_gas_dynamics(self):
         logger.info('%s compute_gas_dynamics' % self.str())

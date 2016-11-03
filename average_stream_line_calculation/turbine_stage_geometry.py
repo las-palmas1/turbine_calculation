@@ -846,12 +846,15 @@ class TurbineGeomAndHeatDropDistribution:
         self.alpha = (self.stage_number - 1) / (2 * self.stage_number) * (1 - self.eta_l) * \
                      ((self.p_g_stag / self.p_t) ** ((self.k_gas - 1) / self.k_gas) - 1)
 
-    def compute_output(self):
+    def compute_output(self, compute_heat_drop_auto=True):
         logger.info('%s  compute_output' % (self.str()))
         self._compute_geometry()
         self._compute_n_max()
         self._compute_outlet_static_parameters()
-        self._compute_heat_drop_distribution()
+        if compute_heat_drop_auto is True:
+            self._compute_heat_drop_distribution()
+        else:
+            pass
 
 
 def specify_h01(turbine_geometry: TurbineGeomAndHeatDropDistribution):
