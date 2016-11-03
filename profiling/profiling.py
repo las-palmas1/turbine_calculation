@@ -8,8 +8,9 @@ import enum
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
 from scipy.integrate import quad
+from mpl_toolkits.mplot3d import Axes3D
 
 log_filename = os.path.join(os.path.dirname(__file__), 'profiling.log')
 logger = func.create_logger(__name__, logging.DEBUG, filename=log_filename, filemode='a',
@@ -158,14 +159,15 @@ class StageParametersRadialDistribution:
         r_av = 0.5 * self.D1_av
         get_atr = object.__getattribute__
         par = get_atr(self, par_name)
-        y = np.array(np.linspace(r_in, r_out, 100)) / r_av
+        y1 = np.array(np.linspace(r_in, r_out, 100)) / r_av
+        y = np.array(np.linspace(r_in, r_out, 100))
         deg = np.pi / 180
-        x = [par(i) for i in y * r_av]
+        x = [par(i) for i in y]
         if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta') != -1 or \
                         par_name.find('gamma') != -1:
             x = [i / deg for i in x]
         plt.figure(figsize=figsize)
-        plt.plot(x, y, linewidth=2, color=color)
+        plt.plot(x, y1, linewidth=2, color=color)
         plt.xlabel(par_name, fontsize=16)
         plt.ylabel(r'$\frac{r}{r_{av}}$', fontsize=22)
         plt.grid()
@@ -350,12 +352,12 @@ class BladeSection:
 
 
 class StageProfiling(StageParametersRadialDistribution):
-    deg = np.pi / deg
+    deg = np.pi / 180
 
     def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
-                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, alpha0, pnt_count, b_a_sa, b_a_rk,
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, alpha0, pnt_count, b_a_sa, b_a_rk, delta_a_sa,
                  r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001,
-                 mindif_alpha0_l_gamma1_s_sa=17 * deg, mindif_beta1_l_gamma1_s_rk=15*deg):
+                 mindif_alpha0_l_gamma1_s_sa=20 * deg, mindif_beta1_l_gamma1_s_rk=20*deg):
         """
 
         :param profiling_type:
@@ -403,6 +405,7 @@ class StageProfiling(StageParametersRadialDistribution):
         self.r1_rk = 0.04 * self.b_a_rk
         self.mindif_alpha0_l_gamma1_s_sa = mindif_alpha0_l_gamma1_s_sa
         self.mindif_beta1_l_gamma1_s_rk = mindif_beta1_l_gamma1_s_rk
+        self.delta_a_sa = delta_a_sa
         self.gamma_sa = None
         self.gamma_rk = None
         self.t_rel_sa = None
@@ -527,21 +530,23 @@ class StageProfiling(StageParametersRadialDistribution):
         return self.gamma1(self.alpha0(r)) * self.gamma1_k_sa_rel
 
     def gamma1_s_sa(self, r):
-        deg = np.pi / 180
-        if self.alpha0_l(r) - self.gamma1(self.alpha0(r)) * (1 - self.gamma1_k_sa_rel) >= 17 * deg:
-            return self.gamma1(self.alpha0(r)) * (1 - self.gamma1_k_sa_rel)
-        else:
-            return self.alpha0_l(r) - 17 * deg
+        g2 = self.gamma1(self.alpha0_l(0.5 * self.D1_out)) * (1 - self.gamma1_k_sa_rel)
+        g1 = self.alpha0_l(0.5 * self.D1_in) - self.mindif_alpha0_l_gamma1_s_sa
+        if (self.alpha0_l(0.5 * self.D1_out) - g2) - self.mindif_alpha0_l_gamma1_s_sa >= 20 * deg:
+            g2 = self.alpha0_l(0.5 * self.D1_out) - self.mindif_alpha0_l_gamma1_s_sa - 20 * deg
+        gamma1_s_int = interp1d(0.5 * np.array([self.D1_in, self.D1_out]), [g1, g2], kind='linear')
+        return gamma1_s_int(r)
 
     def gamma1_k_rk(self, r):
         return self.gamma1(self.beta1(r)) * self.gamma1_k_rk_rel
 
     def gamma1_s_rk(self, r):
-        deg = np.pi / 180
-        if self.beta1_l(r) - self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel) >= 15 * deg:
-            return self.gamma1(self.beta1(r)) * (1 - self.gamma1_k_rk_rel)
-        else:
-            return self.beta1_l(r) - 15 * deg
+        g2 = self.gamma1(self.beta1_l(0.5 * self.D1_out)) * (1 - self.gamma1_k_rk_rel)
+        g1 = self.beta1_l(0.5 * self.D1_in) - self.mindif_beta1_l_gamma1_s_rk
+        if (self.beta1_l(0.5 * self.D1_out) - g2) - self.mindif_beta1_l_gamma1_s_rk >= 20 * deg:
+            g2 = self.beta1_l(0.5 * self.D1_out) - self.mindif_beta1_l_gamma1_s_rk - 20 * deg
+        gamma1_s_int = interp1d(0.5 * np.array([self.D1_in, self.D1_out]), [g1, g2], kind='linear')
+        return gamma1_s_int(r)
 
     def compute_sections_coordinates(self):
         self._compute_step()
@@ -558,7 +563,7 @@ class StageProfiling(StageParametersRadialDistribution):
             self._rk_sections[n].gamma1_s = self.gamma1_s_rk(i)
             self._rk_sections[n].r_rel = self.r_rel[n]
 
-    def plot2d(self, delta_a_sa, pnt_count=50, r_rel=0.5, x0=0, ymax=0.7):
+    def plot2d(self, pnt_count=50, r_rel=0.5, x0=0, ymax=0.7):
         r = 0.5 * (self.D1_in + r_rel * (self.D1_out - self.D1_in))
         t_sa = self.t_sa_av * 2 * r / self.D1_av
         t_rk = self.t_rk_av * 2 * r / self.D1_av
@@ -575,9 +580,28 @@ class StageProfiling(StageParametersRadialDistribution):
             y0 += t_sa
         y0 = 0
         for i in range(n_rk):
-            plt.plot(rk_section.x_k + x0 + self.b_a_sa + delta_a_sa, rk_section.y_k + y0, color='blue', linewidth=2)
-            plt.plot(rk_section.x_s + x0 + self.b_a_sa + delta_a_sa, rk_section.y_s + y0, color='blue', linewidth=2)
+            plt.plot(rk_section.x_k + x0 + self.b_a_sa + self.delta_a_sa, rk_section.y_k + y0, color='blue',
+                     linewidth=2)
+            plt.plot(rk_section.x_s + x0 + self.b_a_sa + self.delta_a_sa, rk_section.y_s + y0, color='blue',
+                     linewidth=2)
             y0 += t_rk
+
+    def plot3d(self, r_rel=(0, 0.5, 1), figsize=(8, 6), pnt_count=30, linewidth=2):
+        r_arr = 0.5 * (self.D1_in + np.array(r_rel) * (self.D1_out - self.D1_in))
+        fig = plt.figure(figsize=figsize)
+        ax = Axes3D(fig)
+        for r in r_arr:
+            sa_section = BladeSection(self.alpha0_l(r), self.alpha1_l(r), self.b_a_sa, self.gamma1_s_sa(r),
+                                      self.gamma1_k_sa(r), pnt_count, self.r1_sa, self.s2_sa)
+            rk_section = BladeSection(self.beta1_l(r), self.beta2_l(r), self.b_a_rk, self.gamma1_s_rk(r),
+                                      self.gamma1_k_rk(r), pnt_count, self.r1_rk, self.s2_rk)
+            ax.plot(xs=sa_section.x_s, ys=-sa_section.y_s + max(sa_section.y_s), zs=r, color='red', linewidth=linewidth)
+            ax.plot(xs=sa_section.x_k, ys=-sa_section.y_k + max(sa_section.y_k), zs=r, color='red', linewidth=linewidth)
+            ax.plot(xs=rk_section.x_s + self.b_a_sa + self.delta_a_sa, ys=rk_section.y_s, zs=r, color='blue',
+                    linewidth=linewidth)
+            ax.plot(xs=rk_section.x_k + self.b_a_sa + self.delta_a_sa, ys=rk_section.y_k, zs=r, color='blue',
+                    linewidth=linewidth)
+        plt.show()
 
 
 def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynamics: StageGasDynamics,
@@ -608,9 +632,9 @@ def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynam
                             stage_geom.D1 - stage_geom.l1, stage_geom.D1, stage_geom.D1 + stage_geom.l1,
                             stage_gas_dynamics.n, stage_gas_dynamics.c1, stage_gas_dynamics.alpha1,
                             stage_gas_dynamics.T_st_stag, stage_gas_dynamics.L_u, stage_gas_dynamics.c2_a,
-                            stage_gas_dynamics.c2_u, alpha0, pnt_count, stage_geom.b_sa, stage_geom.b_rk, r_rel,
-                            gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk, mindif_alpha0_l_gamma1_s_sa,
-                            mindif_beta1_l_gamma1_s_rk)
+                            stage_gas_dynamics.c2_u, alpha0, pnt_count, stage_geom.b_sa, stage_geom.b_rk,
+                            stage_geom.delta_a_sa, r_rel, gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk,
+                            mindif_alpha0_l_gamma1_s_sa, mindif_beta1_l_gamma1_s_rk)
     return result
 
 
@@ -704,7 +728,7 @@ class TurbineProfiling:
         plt.title(r'$r_{rel} = %s$' % r_rel, fontsize=20)
         x0 = 0
         for i in range(len(self)):
-            self[i].plot2d(self._turbine.geom[i].delta_a_sa, pnt_count, r_rel, x0, ymax)
+            self[i].plot2d(pnt_count, r_rel, x0, ymax)
             x0 += self._turbine.geom[i].b_sa + self._turbine.geom[i].b_rk + self._turbine.geom[i].delta_a_sa + \
                   self._turbine.geom[i].delta_a_rk
         plt.ylim(0, ymax)
@@ -743,13 +767,15 @@ if __name__ == '__main__':
     turbine_profiling.set_gamma1_k_rel(0.25, 0.35)
     turbine_profiling[0].gamma1_k_rk_rel = 0.45
     turbine_profiling.compute_profile()
-    turbine_profiling[0].plot_parameter_distribution('gamma1_s_rk')
-    turbine_profiling[1].plot_parameter_distribution('alpha0_l')
-    turbine_profiling[1].plot_parameter_distribution('gamma1_s_sa')
+    turbine_profiling[0].plot_parameter_distribution('gamma1_s_sa')
+    turbine_profiling[0].plot_parameter_distribution('alpha0_l')
+    turbine_profiling[1].plot_parameter_distribution('gamma1_s_rk')
+    turbine_profiling[1].plot_parameter_distribution('beta1_l')
     turbine_profiling.plot2d(r_rel=0)
-    for i in turbine_profiling:
-        print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg,
-              i.gamma1_k_sa(0.5 * i.D1_in) / deg)
-        print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg,
-              i.beta1_l(0.5 * i.D1_av) / deg)
-    turbine_profiling[0].plot_velocity_triangles()
+    # for i in turbine_profiling:
+    #     print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg,
+    #           i.gamma1_k_sa(0.5 * i.D1_in) / deg)
+    #     print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg,
+    #           i.beta1_l(0.5 * i.D1_av) / deg)
+    # turbine_profiling[0].plot_velocity_triangles()
+    turbine_profiling[0].plot3d(r_rel=np.linspace(0, 1, 50))
