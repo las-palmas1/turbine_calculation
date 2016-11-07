@@ -394,7 +394,10 @@ class StageGasDynamics:
             raise InvalidStageSizeValue('c2_a must be less than w2')
         self.beta2 = np.arcsin(self.c2_a / self.w2)
         self.c2_u = self.w2 * np.cos(self.beta2) - self.u2
-        self.alpha2 = np.arctan(self.c2_a / self.c2_u)
+        if self.c2_u >= 0:
+            self.alpha2 = np.arctan(self.c2_a / self.c2_u)
+        else:
+            self.alpha2 = np.pi + np.arctan(self.c2_a / self.c2_u)
         self.c2 = np.sqrt(self.c2_a**2 + self.c2_u**2)
         self.L_u = self.c1_u * self.u1 + self.c2_u * self.u2
         self.eta_u = self.L_u / self.H0

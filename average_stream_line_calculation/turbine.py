@@ -211,7 +211,7 @@ class Turbine:
         длины лопатки РК к диаметру на выходе из РК
         """
         for i in self.geom:
-            i.rho = self.rho_func(i.l2 / i.D2)
+            i.rho = self.rho_func(i.l1 / i.D1)
 
     def set_l_b_ratio(self, x0, delta, sa_rk_ratio):
         """
