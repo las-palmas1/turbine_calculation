@@ -1,6 +1,7 @@
 import logging
 import os
 import functions as func
+from gas_dynamics import GasDynamicFunctions
 from average_streamline_calculation.turbine import Turbine, TurbineType
 from average_streamline_calculation.turbine_stage_geometry import StageGeomAndHeatDrop, InvalidStageSizeValue
 from average_streamline_calculation.turbine_stage_gas_dynamics import StageGasDynamics
@@ -24,8 +25,8 @@ class ProfilingType(enum.Enum):
 
 
 class StageParametersRadialDistribution:
-    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
-                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av):
+    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c_p, k, D1_in, D1_av, D1_out, n,
+                 c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, phi=1.0, psi=1.0):
         self.profiling_type = profiling_type
         self.p0_stag = p0_stag
         self.T0_stag = T0_stag
@@ -68,16 +69,21 @@ class StageParametersRadialDistribution:
         return np.arcsin(self.c1_a(r) / self.c1(r))
 
     def H_s(self, r):
-        return self.c1(r) ** 2 / (2 * self.phi)
+        return self.c1(r) ** 2 / (2 * self.phi ** 2)
 
     def p1(self, r):
-        return self.p0_stag * (1 - self.H_s(r) / (self.T0_stag * self.c_p)) ** (self.k / (self.k - 1))
+        return self.p0_stag(r) * (1 - self.H_s(r) / (self.T0_stag * self.c_p)) ** (self.k / (self.k - 1))
 
     def T1_ad(self, r):
         return self.T0_stag - self.H_s(r) / self.c_p
 
     def T1(self, r):
         return self.T0_stag - self.H_s(r) * self.phi ** 2 / self.c_p
+
+    def p1_ideal(self, r):
+        def int_func(r):
+            return self.c1_u(r) ** 2 / (self.R * self.T1(r) * r)
+        return self.p1(self.D1_av / 2) * np.exp(quad(int_func, 0.5 * self.D1_av, r)[0])
 
     def u(self, r):
         return 2 * np.pi * r * self.n / 60
@@ -134,16 +140,22 @@ class StageParametersRadialDistribution:
         return 0.5 * ((self.w2(r) / self.psi) ** 2 - self.w1(r) ** 2)
 
     def p2(self, r):
-        return self.p1(r) * (1 - self.H_l(r) / (self.c_p * self.T1(r)))  # ** (self.k / (self.k - 1))
+        return self.p1(r) * (1 - self.H_l(r) / (self.c_p * self.T1(r))) ** (self.k / (self.k - 1))
+
+    def p2_ideal(self, r):
+        def int_func(r):
+            return self.c2_u(r) ** 2 / (self.R * self.T2(r) * r)
+        return self.p2(self.D1_av / 2) * np.exp(quad(int_func, 0.5 * self.D1_av, r)[0])
+
+    def p2_stag(self, r):
+        return self.p2(r) / GasDynamicFunctions.pi_lam(self.c2(r) /
+                                                       GasDynamicFunctions.a_cr(self.T2_stag(r), self.k, self.R), self.k)
 
     def T2(self, r):
-        return self.T2_stag(r) - self.c2(r) ** 2 / (2 * self.c_p)
-
-    def T2_check(self, r):
         return self.T1(r) - (self.w2(r) ** 2 - self.w1(r) ** 2) / (2 * self.c_p)
 
     def H0(self, r):
-        return self.c_p * self.T0_stag * (1 - (self.p0_stag / self.p2(r)) ** ((1 - self.k) / self.k))
+        return self.c_p * self.T0_stag * (1 - (self.p0_stag(r) / self.p2(r)) ** ((1 - self.k) / self.k))
 
     def rho(self, r):
         return self.H_l(r) * self.T1_ad(r) / (self.H0(r) * self.T1(r))
@@ -154,22 +166,23 @@ class StageParametersRadialDistribution:
     def M_w2(self, r):
         return self.w2(r) / np.sqrt(self.k * self.R * self.T2(r))
 
-    def plot_parameter_distribution(self, par_name: str, figsize=(9, 7), color='blue'):
+    def plot_parameter_distribution(self, par_names, color, figsize=(9, 7)):
         r_in = 0.5 * self.D1_in
         r_out = 0.5 * self.D1_out
         r_av = 0.5 * self.D1_av
         get_atr = object.__getattribute__
-        par = get_atr(self, par_name)
         y1 = np.array(np.linspace(r_in, r_out, 100)) / r_av
         y = np.array(np.linspace(r_in, r_out, 100))
         deg = np.pi / 180
-        x = [par(i) for i in y]
-        if par_name.find('alpha') != -1 or par_name.find('beta') != -1 or par_name.find('delta') != -1 or \
-                        par_name.find('gamma') != -1:
-            x = [i / deg for i in x]
         plt.figure(figsize=figsize)
-        plt.plot(x, y1, linewidth=2, color=color)
-        plt.xlabel(par_name, fontsize=16)
+        for n, item in enumerate(par_names):
+            par = get_atr(self, item)
+            x = [par(i) for i in y]
+            if item.find('alpha') != -1 or item.find('beta') != -1 or item.find('delta') != -1 or \
+                           item.find('gamma') != -1:
+                x = [i / deg for i in x]
+            plt.plot(x, y1, linewidth=2, color=color[n], label=item)
+        plt.legend(fontsize=16)
         plt.ylabel(r'$\frac{r}{r_{av}}$', fontsize=22)
         plt.grid()
         plt.show()
@@ -355,10 +368,10 @@ class BladeSection:
 class StageProfiling(StageParametersRadialDistribution):
     deg = np.pi / 180
 
-    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, phi, psi, c_p, k, D1_in, D1_av, D1_out, n,
+    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c_p, k, D1_in, D1_av, D1_out, n,
                  c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, alpha0, pnt_count, b_a_sa, b_a_rk, delta_a_sa,
-                 r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001,
-                 mindif_alpha0_l_gamma1_s_sa=20 * deg, mindif_beta1_l_gamma1_s_rk=17*deg,
+                 psi=1.0, phi=1.0, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001,
+                 s2_rk=0.001, mindif_alpha0_l_gamma1_s_sa=20 * deg, mindif_beta1_l_gamma1_s_rk=17*deg,
                  maxdif_alpha0_l_gamma1_s_sa=40*deg, maxdif_beta1_l_gamma1_s_rk=37*deg, min_t_rel_sa_in=0.75,
                  min_t_rel_rk_in=0.75):
         """
@@ -392,9 +405,9 @@ class StageProfiling(StageParametersRadialDistribution):
         :param mindif_alpha0_l_gamma1_s_sa: минимальная разность углов alpha0_l и gamma1_s_sa
         :param mindif_beta1_l_gamma1_s_rk: минимальная разность углов beta1_l и gamma1_s_rk
         """
-        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, phi, psi, c_p, k, D1_in,
+        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, c_p, k, D1_in,
                                                    D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av,
-                                                   c2_u_av)
+                                                   c2_u_av, phi=phi, psi=psi)
         self.alpha0 = alpha0
         self.r_rel = r_rel
         self.pnt_count = pnt_count
@@ -456,13 +469,13 @@ class StageProfiling(StageParametersRadialDistribution):
         if M >= 0.95:
             return 0
         elif 15 * deg <= angle2 <= 20 * deg:
-            M_arr = np.array([0.95, 0.8, 0.3])
-            delta = np.array([1 / 3 * deg, 5 / 6 * deg, 8 / 6 * deg])
+            M_arr = np.array([0.95, 0.8, 0.3, 0.1])
+            delta = np.array([1 / 3 * deg, 5 / 6 * deg, 8 / 6 * deg, 10 / 6 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 20 * deg < angle2 <= 30 * deg:
-            M_arr = np.array([0.95, 0.6, 0.3])
-            delta = np.array([1 / 3 * deg, 1.5 * deg, 2 * deg])
+            M_arr = np.array([0.95, 0.6, 0.3, 0.1])
+            delta = np.array([1 / 3 * deg, 1.5 * deg, 2 * deg, 2.5 * deg])
             delta_int = interp1d(M_arr, delta)
             return delta_int(M)
         elif 30 * deg < angle2 <= 40 * deg:
@@ -476,8 +489,8 @@ class StageProfiling(StageParametersRadialDistribution):
     @classmethod
     def gamma1(cls, angle1):
         deg = np.pi / 180
-        angle1_arr = np.array([5, 150]) * deg
-        gamma1_arr = np.array([22, 7]) * deg
+        angle1_arr = np.array([5, 170]) * deg
+        gamma1_arr = np.array([22, 5]) * deg
         gamma1_int = interp1d(angle1_arr, gamma1_arr)
         return gamma1_int(angle1)
 
@@ -657,8 +670,8 @@ class StageProfiling(StageParametersRadialDistribution):
 
 
 def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynamics: StageGasDynamics,
-                               prof_type: ProfilingType, alpha0, pnt_count=20, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25,
-                               gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001) -> StageProfiling:
+                               prof_type: ProfilingType, p0_stag, alpha0, pnt_count=20, r_rel=(0, 0.5, 1),
+                               gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001) -> StageProfiling:
     """
 
     :param stage_geom:
@@ -666,8 +679,6 @@ def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynam
     :param prof_type:
     :param alpha0: угол входа в СА в зависимости от радиуса
     :param pnt_count:  количесиство точек для нахождения координат сторон профиля в каждом сечении
-    :param b_a_sa:
-    :param b_a_rk:
     :param r_rel: относительные радиусы сечений для нахождения координат
     :param gamma1_k_sa_rel: отношение углов gamma1_k и gamma1 для СА
     :param gamma1_k_rk_rel: отношение углов gamma1_k и gamma1 для РК
@@ -675,13 +686,14 @@ def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynam
     :param s2_rk: толщина выходной кромки РК
     :return: StageProfiling
     """
-    result = StageProfiling(prof_type, stage_gas_dynamics.p0_stag, stage_gas_dynamics.T0_stag, stage_geom.phi,
-                            stage_geom.psi, stage_gas_dynamics.c_p_gas, stage_gas_dynamics.k_gas,
+    result = StageProfiling(prof_type, p0_stag, stage_gas_dynamics.T0_stag,
+                            stage_gas_dynamics.c_p_gas, stage_gas_dynamics.k_gas,
                             stage_geom.D1 - stage_geom.l1, stage_geom.D1, stage_geom.D1 + stage_geom.l1,
                             stage_gas_dynamics.n, stage_gas_dynamics.c1, stage_gas_dynamics.alpha1,
                             stage_gas_dynamics.T_st_stag, stage_gas_dynamics.L_u, stage_gas_dynamics.c2_a,
                             stage_gas_dynamics.c2_u, alpha0, pnt_count, stage_geom.b_sa, stage_geom.b_rk,
-                            stage_geom.delta_a_sa, r_rel, gamma1_k_sa_rel, gamma1_k_rk_rel, s2_sa, s2_rk)
+                            stage_geom.delta_a_sa, r_rel=r_rel, gamma1_k_sa_rel=gamma1_k_sa_rel,
+                            gamma1_k_rk_rel=gamma1_k_rk_rel, s2_sa=s2_sa, s2_rk=s2_rk)
     return result
 
 
@@ -695,12 +707,13 @@ class TurbineProfiling:
         for i in range(len(turbine)):
             deg = np.pi / 180
             if i == 0:
-                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, lambda r: 90 * deg,
+                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type,
+                                                      lambda r: turbine[i].p0_stag, lambda r: 90 * deg,
                                                       pnt_count=pnt_count, r_rel=r_rel)
                 self._stages_profile.append(stage_pr)
             else:
-                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, self[i - 1].alpha2,
-                                                      pnt_count=pnt_count, r_rel=r_rel)
+                stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, self[i - 1].p2_stag,
+                                                      self[i - 1].alpha2, pnt_count=pnt_count, r_rel=r_rel)
                 self._stages_profile.append(stage_pr)
 
     @property
@@ -777,9 +790,19 @@ class TurbineProfiling:
             arr[n1]['sa'] = dict()
             arr[n1]['sa']['z'] = i1.z_sa
             arr[n1]['sa']['sections'] = []
+            arr[n1]['sa']['D0_in'] = self._turbine.geom[n1].D0 - self._turbine.geom[n1].l0
+            arr[n1]['sa']['D05_in'] = self._turbine.geom[n1].D05 - self._turbine.geom[n1].l05
+            arr[n1]['sa']['D0_out'] = self._turbine.geom[n1].D0 + self._turbine.geom[n1].l0
+            arr[n1]['sa']['D05_out'] = self._turbine.geom[n1].D05 + self._turbine.geom[n1].l05
+            arr[n1]['sa']['b_a'] = i1.b_a_sa
             arr[n1]['rk'] = dict()
             arr[n1]['rk']['z'] = i1.z_rk
             arr[n1]['rk']['sections'] = []
+            arr[n1]['rk']['D1_in'] = self._turbine.geom[n1].D1 - self._turbine.geom[n1].l1
+            arr[n1]['rk']['D2_in'] = self._turbine.geom[n1].D2 - self._turbine.geom[n1].l2
+            arr[n1]['rk']['D1_out'] = self._turbine.geom[n1].D1 + self._turbine.geom[n1].l1
+            arr[n1]['rk']['D2_out'] = self._turbine.geom[n1].D2 + self._turbine.geom[n1].l2
+            arr[n1]['rk']['b_a'] = i1.b_a_rk
             for i2 in i1:
                 arr[n1]['sa']['sections'].append(i2['sa'])
                 arr[n1]['rk']['sections'].append(i2['rk'])
@@ -802,49 +825,62 @@ class TurbineProfiling:
 if __name__ == '__main__':
     deg = np.pi / 180
     turbine = Turbine(TurbineType.Compressor, gamma_av=4 * deg, gamma_sum=10 * deg)
-    turbine.alpha11 = 17 * deg
+    turbine.alpha11 = 18 * deg
     turbine.alpha_air = 2.87
-    turbine.c21_init = 250
+    turbine.c21_init = 220
     turbine.eta_t_stag_cycle = 0.91
-    turbine.G_turbine = 25
-    turbine.H01_init = 150e3
-    turbine.H_t_stag_cycle = 350e3
+    turbine.G_turbine = 30
+    turbine.H01_init = 60e3
+    turbine.H_t_stag_cycle = 150e3
     turbine.k_n = 6.8
-    turbine.l1_D1_ratio = 1 / 4
-    turbine.L_t_cycle = 320e3
+    turbine.l1_D1_ratio = 1 / 3
+    turbine.L_t_cycle = 130e3
     turbine.n_rel = 0.9
-    turbine.p_g_stag = 12e5
+    turbine.p_g_stag = 11e5
     turbine.T_g_stag = 1400
-    turbine.T_t_stag_cycle = 500
-    turbine.p_t_stag_cycle = 100e3
+    turbine.T_t_stag_cycle = 950
+    turbine.p_t_stag_cycle = 850e3
     turbine.phi1 = 0.97
-    turbine.sigma_l = 200e6
+    turbine.rho1 = 0.3
+    turbine.sigma_l = 250e6
     turbine.stage_number = 2
     turbine.set_delta_a_b_ratio(0.22, 0)
     turbine.set_l_b_ratio(1.8, 0.2, 0.9)
-    turbine.compute_geometry()
-    turbine.set_rho()
+    turbine.compute_geometry(compute_heat_drop_auto=False)
+    turbine.geom[0].H0 = 60e3
+    turbine.geom[1].H0 = 200e3
+    turbine.geom[0].rho = 0.45
+    turbine.geom[1].rho = 0.35
     turbine.compute_stages_gas_dynamics()
-
-    turbine_profiling = TurbineProfiling(turbine, ProfilingType.ConstantAngle)
+    turbine[0].plot_velocity_triangle()
+    turbine[1].plot_velocity_triangle()
+    print(turbine[0].alpha2 / deg)
+    print(turbine[0].H0)
+    print(turbine[1].alpha2 / deg)
+    print(turbine[1].H0)
+    print(turbine[0].n)
+    print(turbine.geom.p_11)
+    print(turbine.geom.c11)
+    print(turbine.geom.p_11)
+    turbine_profiling = TurbineProfiling(turbine, ProfilingType.ConstantCirculation)
     turbine_profiling.set_gamma1_k_rel(0.25, 0.35)
     turbine_profiling[0].gamma1_k_rk_rel = 0.45
-    # turbine_profiling[0].maxdif_alpha0_l_gamma1_s_sa = 70 * deg
     turbine_profiling.compute_profile()
-    turbine_profiling[0].plot_parameter_distribution('delta_sa')
-    turbine_profiling[0].plot_parameter_distribution('delta_rk')
-    turbine_profiling[1].plot_parameter_distribution('delta_sa')
-    turbine_profiling[1].plot_parameter_distribution('dif_beta1_l_gamma1_s_rk')
-    turbine_profiling.plot2d(r_rel=0)
+    turbine_profiling[0].plot_parameter_distribution(['beta1', 'beta2'], color=['blue', 'red'])
+    turbine_profiling[0].plot_parameter_distribution(['alpha1', 'alpha2'], color=['blue', 'red'])
+    # turbine_profiling[0].plot_parameter_distribution(['p1', 'p1_ideal'], color=['blue', 'red'])
+    # turbine_profiling[0].plot_parameter_distribution(['p2', 'p2_ideal'], color=['blue', 'red'])
+    turbine_profiling[0].plot_parameter_distribution(['p2_stag'], color=['blue'])
+    # turbine_profiling.plot2d(r_rel=0)
     # for i in turbine_profiling:
     #     print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg,
     #           i.gamma1_k_sa(0.5 * i.D1_in) / deg)
     #     print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg,
     #           i.beta1_l(0.5 * i.D1_av) / deg)
     # turbine_profiling[0].plot_velocity_triangles()
-    turbine_profiling[0].plot3d(title='Stage 1', r_rel=np.linspace(0, 1, 50))
-    turbine_profiling[1].plot3d(title='Stage 2', r_rel=np.linspace(0, 1, 50))
-    print(turbine_profiling[1].t_rel_rk_in)
-    print(turbine_profiling[1].t_rel_sa_in)
-    print(turbine_profiling[0].t_rel_rk_in)
-    print(turbine_profiling[0].t_rel_sa_in)
+    # turbine_profiling[0].plot3d(title='Stage 1', r_rel=np.linspace(0, 1, 50))
+    # turbine_profiling[1].plot3d(title='Stage 2', r_rel=np.linspace(0, 1, 50))
+    # print(turbine_profiling[1].t_rel_rk_in)
+    # print(turbine_profiling[1].t_rel_sa_in)
+    # print(turbine_profiling[0].t_rel_rk_in)
+    # print(turbine_profiling[0].t_rel_sa_in)
