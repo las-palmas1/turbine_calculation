@@ -9,10 +9,12 @@ import enum
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d, InterpolatedUnivariateSpline
+from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from mpl_toolkits.mplot3d import Axes3D
 import pickle as pk
+from scipy.optimize import minimize_scalar
+
 
 log_filename = os.path.join(os.path.dirname(__file__), 'profiling.log')
 logger = func.create_logger(__name__, logging.DEBUG, filename=log_filename, filemode='a',
@@ -336,6 +338,59 @@ class BladeSection:
         x = np.array(np.linspace(x1, x2, pnt_count))
         y = a * x ** 2 + b * x + c
         return x, y
+
+    def _compute_section_center(self):
+        x_av_arr, y_av_arr = self.compute_parabola_coordinates_by_dir(0, self.b_a, self.dir1_av, self.dir2_av, 50)
+        x_s_arr, y_s_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] - 0.5 * self.r1, self.b_a,
+                                                                       y_av_arr[49] - 0.5 * self.s2, 50,
+                                                                       dir1=self.dir1_s)
+        x_k_arr, y_k_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] + 0.5 * self.r1, self.b_a,
+                                                                       y_av_arr[49] + 0.5 * self.s2, 50,
+                                                                       dir1=self.dir1_k)
+
+        y_s_int = interp1d(x_s_arr, y_s_arr)
+        y_k_int = interp1d(x_k_arr, y_k_arr)
+
+        def y_s(x):
+            return y_s_int(x)
+
+        def y_k(x):
+            return y_k_int(x)
+
+        self.square = quad(y_k, min(self.x_k), max(self.x_k))[0] - quad(y_s, min(self.x_s), max(self.x_s))[0]
+
+        def func_to_int_sx(x):
+            return y_k(x) ** 2 - y_s(x) ** 2
+
+        self.s_x = quad(func_to_int_sx, min(self.x_s), max(self.x_s))[0] * 0.5
+        self.y_center = self.s_x / self.square
+
+        x_s_min = x_s_arr[list(y_s_arr).index(min(y_s_arr))]
+        x_k_min = x_k_arr[list(y_k_arr).index(min(y_k_arr))]
+        x_s_arr1 = np.linspace(min(x_s_arr), x_s_min, 30)
+        x_k_arr1 = np.linspace(min(x_k_arr), x_k_min, 30)
+        x_s_arr2 = np.linspace(x_s_min, max(x_s_arr), 30)
+        x_k_arr2 = np.linspace(x_k_min, max(x_k_arr), 30)
+        y_s_arr1 = y_s(x_s_arr1)
+        y_k_arr1 = y_k(x_k_arr1)
+        y_s_arr2 = y_s(x_s_arr2)
+        y_k_arr2 = y_k(x_k_arr2)
+        x_s1_int = interp1d(y_s_arr1, x_s_arr1)
+        x_s2_int = interp1d(y_s_arr2, x_s_arr2)
+        x_k1_int = interp1d(y_k_arr1, x_k_arr1)
+        x_k2_int = interp1d(y_k_arr2, x_k_arr2)
+
+        def x_s1(y):
+            return x_s1_int(y)
+
+        def x_s2(y):
+            return x_s2_int(y)
+
+        def x_k1(y):
+            return x_k1_int(y)
+
+        def x_k2(y):
+            return x_k2_int(y)
 
     def _compute_coordinates(self):
         try:
