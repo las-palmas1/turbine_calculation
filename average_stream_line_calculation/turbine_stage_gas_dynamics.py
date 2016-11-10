@@ -459,7 +459,7 @@ class StageGasDynamics:
 
 
 def get_first_stage_gas_dynamics(stage_geom: StageGeomAndHeatDrop, T0_stag, p0_stag, G_turbine,
-                                 alpha_air):
+                                 alpha_air) -> StageGasDynamics:
     logger.info('get_first_stage_gas_dynamics')
     result = StageGasDynamics(T0_stag, p0_stag, G_turbine, G_turbine, alpha_air, KeroseneCombustionProducts(),
                               stage_geom.rho, stage_geom.phi, stage_geom.psi, stage_geom.l1,
@@ -469,10 +469,14 @@ def get_first_stage_gas_dynamics(stage_geom: StageGeomAndHeatDrop, T0_stag, p0_s
     return result
 
 
-def get_intermediate_stage(stage_geom: StageGeomAndHeatDrop, prev_stage: StageGasDynamics) -> StageGasDynamics:
+def get_intermediate_stage(stage_geom: StageGeomAndHeatDrop, prev_stage: StageGasDynamics, precise_heat_drop=True) -> \
+        StageGasDynamics:
     logger.info('get_intermediate_stage')
-    H0 = stage_geom.H0 * (1 + (1 - stage_geom.mu) ** 2 * prev_stage.c2 ** 2 /
-                          (2 * prev_stage.c_p_gas * prev_stage.T_st)) + 0.5 * (stage_geom.mu * prev_stage.c2) ** 2
+    if precise_heat_drop:
+        H0 = stage_geom.H0 * (1 + (1 - stage_geom.mu) ** 2 * prev_stage.c2 ** 2 /
+                              (2 * prev_stage.c_p_gas * prev_stage.T_st)) + 0.5 * (stage_geom.mu * prev_stage.c2) ** 2
+    else:
+        H0 = stage_geom.H0
     p0_stag = prev_stage.p2 * (1 + (stage_geom.mu * prev_stage.c2)**2 / (2 * prev_stage.c_p_gas * prev_stage.T_st)) ** \
                               (prev_stage.k_gas / (prev_stage.k_gas - 1))
     result = StageGasDynamics(prev_stage.T_st_stag, p0_stag, prev_stage.G_stage_out, prev_stage.G_turbine,

@@ -35,10 +35,9 @@ class Turbine:
         self._alpha_air = None
         self._stage_number = None
         self._k_n = 6.8
-        self._sigma_l = None
         self._work_fluid = KeroseneCombustionProducts()
         self._l1_D1_ratio = None
-        self._n_rel = None
+        self._n = None
         self._c21_init = None
         self._H01_init = None
         self._rho1 = None
@@ -108,11 +107,11 @@ class Turbine:
         try:
             self._geom = TurbineGeomAndHeatDropDistribution(self.stage_number, self.eta_t_stag_cycle,
                                                             self.H_t_stag_cycle,
-                                                            self.c21_init, self.n_rel, self.work_fluid,
+                                                            self.c21_init, self.n, self.work_fluid,
                                                             self.T_g_stag, self.p_g_stag, self.alpha_air,
                                                             self.G_turbine, self.l1_D1_ratio, self.H01_init,
                                                             self.rho1, self.phi1, self.alpha11, self.k_n,
-                                                            self.sigma_l, self.T_t_stag_cycle,
+                                                            self.T_t_stag_cycle,
                                                             self.p_t_stag_cycle, **self._kwargs)
         except AssertionError:
             pass
@@ -125,7 +124,7 @@ class Turbine:
         else:
             pass
 
-    def compute_stages_gas_dynamics(self):
+    def compute_stages_gas_dynamics(self, precise_heat_drop=True):
         logger.info('%s compute_gas_dynamics' % self.str())
         if self.turbine_type == TurbineType.Power:
             for num, item in enumerate(self.geom):
@@ -135,7 +134,8 @@ class Turbine:
                                                                  self.alpha_air)
                     self._gas_dynamics.append(stage_gas_dyn)
                 elif num < self.stage_number - 1:
-                    stage_gas_dyn = get_intermediate_stage(item, self._gas_dynamics[num - 1])
+                    stage_gas_dyn = get_intermediate_stage(item, self._gas_dynamics[num - 1],
+                                                           precise_heat_drop=precise_heat_drop)
                     self._gas_dynamics.append(stage_gas_dyn)
                 elif num == self.stage_number - 1:
                     stage_gas_dyn = get_last_pressure_stage(self.geom, item,
@@ -369,13 +369,13 @@ class Turbine:
         self._init_turbine_geom()
 
     @property
-    def n_rel(self):
-        assert self._n_rel is not None, 'n_rel must not be None'
-        return self._n_rel
+    def n(self):
+        assert self._n is not None, 'n must not be None'
+        return self._n
 
-    @n_rel.setter
-    def n_rel(self, value):
-        self._n_rel = value
+    @n.setter
+    def n(self, value):
+        self._n = value
         self._init_turbine_geom()
 
     @property
@@ -394,16 +394,6 @@ class Turbine:
     def work_fluid(self) -> KeroseneCombustionProducts:
         assert self._work_fluid is not None, 'work_fluid must not be None'
         return self._work_fluid
-
-    @property
-    def sigma_l(self):
-        assert self._sigma_l is not None, 'sigma_l must not be None'
-        return self._sigma_l
-
-    @sigma_l.setter
-    def sigma_l(self, value):
-        self._sigma_l = value
-        self._init_turbine_geom()
 
     @property
     def k_n(self):
@@ -527,13 +517,12 @@ if __name__ == '__main__':
     turbine.k_n = 6.8
     turbine.l1_D1_ratio = 1 / 4
     turbine.L_t_cycle = 320e3
-    turbine.n_rel = 0.9
+    turbine.n = 15e3
     turbine.p_g_stag = 12e5
     turbine.T_g_stag = 1400
     turbine.T_t_stag_cycle = 500
     turbine.p_t_stag_cycle = 100e3
     turbine.phi1 = 0.97
-    turbine.sigma_l = 200e6
     turbine.stage_number = 2
     turbine.set_delta_a_b_ratio(0.22, 0)
     turbine.set_l_b_ratio(1.8, 0.2, 0.9)
@@ -545,28 +534,6 @@ if __name__ == '__main__':
     # print(turbine.geom.c_t)
     # for num, i in enumerate(turbine):
     #     i.plot_velocity_triangle('Stage %s2' % (num + 1))
-    print(turbine.geom[1].D1 + 2 * turbine.geom[1].l1)
-    print(turbine.geom[1].D2 + 2 * turbine.geom[1].l2)
-    print(turbine.geom[1].D2 - 2 * turbine.geom[1].l2)
-    print(turbine.geom[1].D1 - 2 * turbine.geom[1].l1)
-    print(turbine.geom[1].D1)
-    print(turbine.geom[1].D2)
-    print(turbine[1].n)
-    print(turbine[1].k_gas)
-    print(turbine[1].c_p_gas)
-    print(turbine[1].c1)
-    print(turbine[1].alpha1)
-    print(turbine[1].p2)
-    print(turbine[1].c2_a)
-    print(turbine[1].p0_stag)
-    print(turbine[1].T0_stag)
-    print(turbine[1].H0)
-    print(turbine[1].c2)
-    print(turbine[1].T_st_stag)
-    print(turbine[1].L_u)
-    print(turbine[1].c2_u)
-    print(turbine.geom[1].b_sa)
-    print(turbine.geom[1].b_rk)
 
 
 

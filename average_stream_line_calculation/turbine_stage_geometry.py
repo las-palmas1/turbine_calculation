@@ -218,7 +218,7 @@ class StageGeomAndHeatDrop:
 
     @property
     def n(self):
-        assert self._n is not None, 'n_rel must not be None'
+        assert self._n is not None, 'n must not be None'
         return self._n
 
     @n.setter
@@ -379,15 +379,15 @@ class StageGeomAndHeatDrop:
 
 
 class TurbineGeomAndHeatDropDistribution:
-    def __init__(self, stage_number, eta_t_stag, H_t_stag, c21, n_rel, work_fluid: KeroseneCombustionProducts, T_g_stag,
-                 p_g_stag, alpha_air, G_turbine, l1_D1_ratio, H01, rho1, phi1, alpha11, k_n, sigma_l, T_t_stag,
+    def __init__(self, stage_number, eta_t_stag, H_t_stag, c21, n, work_fluid: KeroseneCombustionProducts, T_g_stag,
+                 p_g_stag, alpha_air, G_turbine, l1_D1_ratio, H01, rho1, phi1, alpha11, k_n, T_t_stag,
                  p_t_stag, **kwargs):
         """
         :param stage_number:
         :param eta_t_stag:
         :param H_t_stag:
         :param c21:
-        :param n_rel: отношение частоты вращения к максимально возможной
+        :param n: частота вращения
         :param work_fluid:
         :param T_g_stag:
         :param p_g_stag:
@@ -399,7 +399,6 @@ class TurbineGeomAndHeatDropDistribution:
         :param phi1:
         :param alpha11: угол потока после СА первой ступени
         :param k_n:
-        :param sigma_l:
         :param T_t_stag:
         :param p_t_stag:
         :param kwargs: gamma_av, gamma_sum, gamma_in, gamma_out
@@ -408,7 +407,7 @@ class TurbineGeomAndHeatDropDistribution:
         self._eta_t_stag = eta_t_stag
         self._H_t_stag = H_t_stag
         self._c21 = c21
-        self._n_rel = n_rel
+        self._n = n
         self._work_fluid = work_fluid
         self._T_g_stag = T_g_stag
         self._p_g_stag = p_g_stag
@@ -420,7 +419,6 @@ class TurbineGeomAndHeatDropDistribution:
         self._phi1 = phi1
         self._alpha11 = alpha11
         self._k_n = k_n
-        self._sigma_l = sigma_l
         self._T_t_stag = T_t_stag
         self._p_t_stag = p_t_stag
         self._kwargs = kwargs
@@ -437,6 +435,8 @@ class TurbineGeomAndHeatDropDistribution:
         else:
             assert False, 'gamma_av and gamma_sum or gamma_in and gamma_out must be set'
         self._stages = [StageGeomAndHeatDrop() for _ in range(self._stage_number)]
+        for item in self._stages:
+            item.n = self.n
 
     @property
     def p_t_stag(self):
@@ -455,15 +455,6 @@ class TurbineGeomAndHeatDropDistribution:
     @T_t_stag.setter
     def T_t_stag(self, value):
         self._T_t_stag = value
-
-    @property
-    def sigma_l(self):
-        assert self._sigma_l is not None, 'sigma_l must not be None'
-        return self._sigma_l
-
-    @sigma_l.setter
-    def sigma_l(self, value):
-        self._sigma_l = value
 
     @property
     def k_n(self):
@@ -605,13 +596,13 @@ class TurbineGeomAndHeatDropDistribution:
         self._work_fluid = value
 
     @property
-    def n_rel(self):
-        assert self._n_rel is not None, 'n_rel must not be None'
-        return self._n_rel
+    def n(self):
+        assert self._n is not None, 'n must not be None'
+        return self._n
 
-    @n_rel.setter
-    def n_rel(self, value):
-        self._n_rel = value
+    @n.setter
+    def n(self, value):
+        self._n = value
 
     @property
     def c21(self):
@@ -797,12 +788,9 @@ class TurbineGeomAndHeatDropDistribution:
         plt.title(title, fontsize=20)
         plt.show()
 
-    def _compute_n_max(self):
-        logger.info('%s  _compute_n_max' % (self.str()))
-        self.n_max = np.sqrt(self.sigma_l / (self.k_n * self.last.A2))
-        self.n = self.n_rel * self.n_max
-        for item in self._stages:
-            item.n = self.n
+    def _compute_sigma_l(self):
+        logger.info('%s  _compute_sigma_l' % (self.str()))
+        self.sigma_l = self.n ** 2 * self.k_n * self.last.A2
 
     def _compute_outlet_static_parameters(self):
         logger.info('%s  _compute_outlet_static_parameters' % (self.str()))
@@ -849,7 +837,7 @@ class TurbineGeomAndHeatDropDistribution:
     def compute_output(self, compute_heat_drop_auto=True):
         logger.info('%s  compute_output' % (self.str()))
         self._compute_geometry()
-        self._compute_n_max()
+        self._compute_sigma_l()
         self._compute_outlet_static_parameters()
         if compute_heat_drop_auto is True:
             self._compute_heat_drop_distribution()
@@ -875,25 +863,9 @@ def specify_h01(turbine_geometry: TurbineGeomAndHeatDropDistribution):
 
 if __name__ == '__main__':
     deg = np.pi / 180
-    # stage_geom = _StageGeomAndHeatDrop()
-    # stage_geom.D1 = 0.40
-    # stage_geom.delta_a_b_rk_ratio = 0.25
-    # stage_geom.delta_a_b_sa_ratio = 0.25
-    # stage_geom.delta_r_rk = 0.002
-    # stage_geom.l1_b_sa_ratio = 2.2
-    # stage_geom.l2_b_rk_ratio = 2.5
-    # stage_geom.l1 = 0.07
-    # stage_geom.gamma_av = 5 * deg
-    # stage_geom.gamma_out = 8 * deg
-    # stage_geom.x0 = 0.02
-    # stage_geom.gamma_in = np.arctan(np.tan(stage_geom.gamma_out) - 2 * np.tan(stage_geom.gamma_av))
-    # stage_geom.plot()
-    # plt.grid()
-    # plt.show()
-    # stage_geom.n_rel = 20e3
-    turbine_geom = TurbineGeomAndHeatDropDistribution(2, 0.91, 300e3, 150, 0.9, KeroseneCombustionProducts(),
+    turbine_geom = TurbineGeomAndHeatDropDistribution(2, 0.91, 300e3, 150, 10e3, KeroseneCombustionProducts(),
                                                       1400, 1.3e6, 2.4, 9, 1 / 3.5, 180e3, 0.8, 0.96, 15 * deg,
-                                                      6.8, 200e6, 850, 120e3, gamma_av=0 * deg,
+                                                      6.8, 850, 120e3, gamma_av=0 * deg,
                                                       gamma_sum=15 * deg)
     turbine_geom[0].delta_a_b_sa_ratio = 0.23
     turbine_geom[0].delta_a_b_rk_ratio = 0.25
