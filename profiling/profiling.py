@@ -13,7 +13,6 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quad
 from mpl_toolkits.mplot3d import Axes3D
 import pickle as pk
-from scipy.optimize import minimize_scalar
 
 
 log_filename = os.path.join(os.path.dirname(__file__), 'profiling.log')
@@ -381,16 +380,26 @@ class BladeSection:
         x_k2_int = interp1d(y_k_arr2, x_k_arr2)
 
         def x_s1(y):
-            return x_s1_int(y)
+            return x_s1_int(y) ** 2 / 2
 
         def x_s2(y):
-            return x_s2_int(y)
+            return x_s2_int(y) ** 2 / 2
 
         def x_k1(y):
-            return x_k1_int(y)
+            return x_k1_int(y) ** 2 / 2
 
         def x_k2(y):
-            return x_k2_int(y)
+            return x_k2_int(y) ** 2 / 2
+
+        s_y1 = quad(x_k2, y_k_arr[len(y_k_arr) - 1], min(y_k_arr))[0]
+        s_y2 = quad(x_k1, min(y_k_arr), y_k_arr[0])[0]
+        s_y3 = x_s_arr[0] ** 2 / 2 * (y_s_arr[0] - y_k_arr[0])
+        s_y4 = quad(x_s1, y_s_arr[0], min(y_s_arr))[0]
+        s_y5 = quad(x_s2, min(y_s_arr), y_s_arr[len(y_s_arr) - 1])[0]
+        s_y6 = x_s_arr[len(x_s_arr) - 1] ** 2 / 2 * (y_k_arr[len(y_k_arr) - 1] - y_s_arr[len(y_k_arr) - 1])
+
+        self.s_y = s_y1 + s_y2 + s_y3 + s_y4 + s_y5 + s_y6
+        self.x_center = self.s_y / self.square
 
     def _compute_coordinates(self):
         try:
@@ -410,6 +419,13 @@ class BladeSection:
                                                                              self.y_av[self.pnt_count - 1] +
                                                                              0.5 * self.s2, self.pnt_count,
                                                                              dir1=self.dir1_k)
+            self._compute_section_center()
+            self.x_s -= self.x_center
+            self.y_s -= self.y_center
+            self.x_k -= self.x_center
+            self.y_k -= self.y_center
+            self.x_center = 0
+            self.y_center = 0
             self.angle2_s = -np.arctan((self.y_s[self.pnt_count - 1] - self.y_s[self.pnt_count - 2]) /
                                        (self.x_s[self.pnt_count - 1] - self.x_s[self.pnt_count - 2])) + np.pi / 2
             self.angle2_k = -np.arctan((self.y_k[self.pnt_count - 1] - self.y_k[self.pnt_count - 2]) /
@@ -890,14 +906,13 @@ if __name__ == '__main__':
     turbine.k_n = 6.8
     turbine.l1_D1_ratio = 1 / 3
     turbine.L_t_cycle = 130e3
-    turbine.n_rel = 0.9
+    turbine.n = 10e3
     turbine.p_g_stag = 11e5
     turbine.T_g_stag = 1400
     turbine.T_t_stag_cycle = 950
     turbine.p_t_stag_cycle = 850e3
     turbine.phi1 = 0.97
     turbine.rho1 = 0.3
-    turbine.sigma_l = 250e6
     turbine.stage_number = 2
     turbine.set_delta_a_b_ratio(0.22, 0)
     turbine.set_l_b_ratio(1.8, 0.2, 0.9)
@@ -909,33 +924,20 @@ if __name__ == '__main__':
     turbine.compute_stages_gas_dynamics()
     turbine[0].plot_velocity_triangle()
     turbine[1].plot_velocity_triangle()
-    print(turbine[0].alpha2 / deg)
-    print(turbine[0].H0)
-    print(turbine[1].alpha2 / deg)
-    print(turbine[1].H0)
-    print(turbine[0].n)
-    print(turbine.geom.p_11)
-    print(turbine.geom.c11)
-    print(turbine.geom.p_11)
-    turbine_profiling = TurbineProfiling(turbine, ProfilingType.ConstantCirculation)
+    print(turbine.geom.sigma_l / 1e6)
+    # print(turbine[0].alpha2 / deg)
+    # print(turbine[0].H0)
+    # print(turbine[1].alpha2 / deg)
+    # print(turbine[1].H0)
+    turbine_profiling = TurbineProfiling(turbine, ProfilingType.ConstantAngle)
     turbine_profiling.set_gamma1_k_rel(0.25, 0.35)
-    turbine_profiling[0].gamma1_k_rk_rel = 0.45
     turbine_profiling.compute_profile()
-    turbine_profiling[0].plot_parameter_distribution(['beta1', 'beta2'], color=['blue', 'red'])
-    turbine_profiling[0].plot_parameter_distribution(['alpha1', 'alpha2'], color=['blue', 'red'])
-    # turbine_profiling[0].plot_parameter_distribution(['p1', 'p1_ideal'], color=['blue', 'red'])
-    # turbine_profiling[0].plot_parameter_distribution(['p2', 'p2_ideal'], color=['blue', 'red'])
-    turbine_profiling[0].plot_parameter_distribution(['p2_stag'], color=['blue'])
-    # turbine_profiling.plot2d(r_rel=0)
+    turbine_profiling.plot2d(r_rel=0.5)
     # for i in turbine_profiling:
     #     print(i.z_sa, i.b_sa, i.gamma_sa / deg, i.t_rel_sa, i.gamma1_s_sa(0.5 * i.D1_in) / deg,
     #           i.gamma1_k_sa(0.5 * i.D1_in) / deg)
     #     print(i.z_rk, i.b_rk, i.gamma_rk / deg, i.t_rel_rk, i.gamma1_s_rk(i.D1_av / 2) / deg,
     #           i.beta1_l(0.5 * i.D1_av) / deg)
-    # turbine_profiling[0].plot_velocity_triangles()
-    # turbine_profiling[0].plot3d(title='Stage 1', r_rel=np.linspace(0, 1, 50))
-    # turbine_profiling[1].plot3d(title='Stage 2', r_rel=np.linspace(0, 1, 50))
-    # print(turbine_profiling[1].t_rel_rk_in)
-    # print(turbine_profiling[1].t_rel_sa_in)
-    # print(turbine_profiling[0].t_rel_rk_in)
-    # print(turbine_profiling[0].t_rel_sa_in)
+    turbine_profiling[0].plot_velocity_triangles()
+    # turbine_profiling[0].plot3d(title='Stage 1', r_rel=np.linspace(0, 1, 20))
+    # turbine_profiling[1].plot3d(title='Stage 2', r_rel=np.linspace(0, 1, 20))
