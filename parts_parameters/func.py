@@ -44,7 +44,7 @@ def create_expressions_file(exp_filename, part_filename, exp_dict):
     abs_exp_filename = os.path.join(current_dir, 'output', 'current', exp_filename)
     abs_path_filename = os.path.join(current_dir, 'output', 'model_paths', exp_filename)
     path_file = open(abs_path_filename, 'w')
-    path_file.write(part_filename + '\n')
+    path_file.write(os.path.abspath(part_filename) + '\n')
     path_file.close()
     exp_file = open(abs_exp_filename, 'w')
     add_expressions_into_file(exp_file, exp_dict)

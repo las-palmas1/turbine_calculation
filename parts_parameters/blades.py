@@ -19,8 +19,8 @@ for n1, i1 in enumerate(stages):
         for n3, i3 in enumerate(i2.x_s):
             s_point_name = 's%s_%s' % (n3, n2)
             k_point_name = 'k%s_%s' % (n3, n2)
-            rk_blades[n1][s_point_name] = NXExpression('Point', s_point_name, [i2.x_s[n3], i2.y_s[n3], i2.r], mm_unit)
-            rk_blades[n1][k_point_name] = NXExpression('Point', k_point_name, [i2.x_k[n3], i2.y_k[n3], i2.r], mm_unit)
+            rk_blades[n1][s_point_name] = NXExpression('Point', s_point_name, [i2.x_s[n3], i2.y_s[n3], i2.r], nd_unit)
+            rk_blades[n1][k_point_name] = NXExpression('Point', k_point_name, [i2.x_k[n3], i2.y_k[n3], i2.r], nd_unit)
 
 
 sa_blades = []
@@ -37,5 +37,5 @@ for n1, i1 in enumerate(stages):
         for n3, i3 in enumerate(i2.x_s):
             s_point_name = 's%s_%s' % (n3, n2)
             k_point_name = 'k%s_%s' % (n3, n2)
-            sa_blades[n1][s_point_name] = NXExpression('Point', s_point_name, [i2.x_s[n3], i2.y_s[n3], i2.r], mm_unit)
-            sa_blades[n1][k_point_name] = NXExpression('Point', k_point_name, [i2.x_k[n3], i2.y_k[n3], i2.r], mm_unit)
+            sa_blades[n1][s_point_name] = NXExpression('Point', s_point_name, [i2.x_s[n3], i2.y_s[n3], i2.r], nd_unit)
+            sa_blades[n1][k_point_name] = NXExpression('Point', k_point_name, [i2.x_k[n3], i2.y_k[n3], i2.r], nd_unit)
