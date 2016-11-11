@@ -873,6 +873,7 @@ class TurbineProfiling:
             arr[n1]['rk']['D2_in'] = self._turbine.geom[n1].D2 - self._turbine.geom[n1].l2
             arr[n1]['rk']['D1_out'] = self._turbine.geom[n1].D1 + self._turbine.geom[n1].l1
             arr[n1]['rk']['D2_out'] = self._turbine.geom[n1].D2 + self._turbine.geom[n1].l2
+            arr[n1]['rk']['delta_r'] = self._turbine.geom[n1].delta_r_rk
             arr[n1]['rk']['b_a'] = i1.b_a_rk
             for i2 in i1:
                 arr[n1]['sa']['sections'].append(i2['sa'])
