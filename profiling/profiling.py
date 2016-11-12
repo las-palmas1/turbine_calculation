@@ -444,7 +444,7 @@ class StageProfiling(StageParametersRadialDistribution):
                  psi=1.0, phi=1.0, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001,
                  s2_rk=0.001, mindif_alpha0_l_gamma1_s_sa=20 * deg, mindif_beta1_l_gamma1_s_rk=17*deg,
                  maxdif_alpha0_l_gamma1_s_sa=40*deg, maxdif_beta1_l_gamma1_s_rk=37*deg, min_t_rel_sa_in=0.75,
-                 min_t_rel_rk_in=0.75):
+                 min_t_rel_rk_in=0.75, r1_rk_rel=0.04, r1_sa_rel=0.04):
         """
 
         :param profiling_type:
@@ -473,6 +473,8 @@ class StageProfiling(StageParametersRadialDistribution):
         :param gamma1_k_rk_rel: отношение углов gamma1_k и gamma1 для РК
         :param s2_sa: толщина выходной кромки СА
         :param s2_rk: толщина выходной кромки РК
+        :param r1_rk_rel: отношение радиуса закругления входной кромки РК к осевой ширине
+        :param r1_sa_rel: отношение радиуса закругления входной кромки СА к осевой ширине
         :param mindif_alpha0_l_gamma1_s_sa: минимальная разность углов alpha0_l и gamma1_s_sa
         :param mindif_beta1_l_gamma1_s_rk: минимальная разность углов beta1_l и gamma1_s_rk
         """
@@ -488,8 +490,8 @@ class StageProfiling(StageParametersRadialDistribution):
         self.gamma1_k_rk_rel = gamma1_k_rk_rel
         self.s2_sa = s2_sa
         self.s2_rk = s2_rk
-        self.r1_sa = 0.04 * self.b_a_sa
-        self.r1_rk = 0.04 * self.b_a_rk
+        self.r1_sa_rel = r1_sa_rel
+        self.r1_rk_rel = r1_rk_rel
         self.mindif_alpha0_l_gamma1_s_sa = mindif_alpha0_l_gamma1_s_sa
         self.mindif_beta1_l_gamma1_s_rk = mindif_beta1_l_gamma1_s_rk
         self.maxdif_alpha0_l_gamma1_s_sa = maxdif_alpha0_l_gamma1_s_sa
@@ -503,9 +505,11 @@ class StageProfiling(StageParametersRadialDistribution):
         self.z_rk = None
         self.t_rk_av = None
         self.t_sa_av = None
-        self._sa_sections = [BladeSection(r1=self.r1_sa, s2=self.s2_sa, pnt_count=self.pnt_count, b_a=self.b_a_sa)
+        self._sa_sections = [BladeSection(r1=self.r1_sa_rel * self.b_a_sa, s2=self.s2_sa, pnt_count=self.pnt_count,
+                                          b_a=self.b_a_sa)
                              for _ in self.r_rel]
-        self._rk_sections = [BladeSection(r1=self.r1_rk, s2=self.s2_rk, pnt_count=self.pnt_count, b_a=self.b_a_rk)
+        self._rk_sections = [BladeSection(r1=self.r1_rk_rel * self.b_a_rk, s2=self.s2_rk, pnt_count=self.pnt_count,
+                                          b_a=self.b_a_rk)
                              for _ in self.r_rel]
 
     def __getitem__(self, item):
@@ -692,6 +696,9 @@ class StageProfiling(StageParametersRadialDistribution):
             self._sa_sections[n].gamma1_k = self.gamma1_k_sa(i)
             self._sa_sections[n].gamma1_s = self.gamma1_s_sa(i)
             self._sa_sections[n].r = i
+            self._sa_sections[n].y_s = -self._sa_sections[n].y_s
+            self._sa_sections[n].y_k = -self._sa_sections[n].y_k
+            self._sa_sections[n].y_av = -self._sa_sections[n].y_av
             self._rk_sections[n].angle1 = self.beta1_l(i)
             self._rk_sections[n].angle2 = self.beta2_l(i)
             self._rk_sections[n].gamma1_k = self.gamma1_k_rk(i)
@@ -706,9 +713,9 @@ class StageProfiling(StageParametersRadialDistribution):
         n_rk = int(round(ymax / t_rk)) + 1
         y0 = 0
         sa_section = BladeSection(self.alpha0_l(r), self.alpha1_l(r), self.b_a_sa, self.gamma1_s_sa(r),
-                                  self.gamma1_k_sa(r), pnt_count, self.r1_sa, self.s2_sa)
+                                  self.gamma1_k_sa(r), pnt_count, self.r1_sa_rel * self.b_a_sa, self.s2_sa)
         rk_section = BladeSection(self.beta1_l(r), self.beta2_l(r), self.b_a_rk, self.gamma1_s_rk(r),
-                                  self.gamma1_k_rk(r), pnt_count, self.r1_rk, self.s2_rk)
+                                  self.gamma1_k_rk(r), pnt_count, self.r1_rk_rel * self.b_a_rk, self.s2_rk)
         for i in range(n_sa):
             plt.plot(sa_section.x_k + x0, -sa_section.y_k + y0 + t_sa, color='red', linewidth=2)
             plt.plot(sa_section.x_s + x0, -sa_section.y_s + y0 + t_sa, color='red', linewidth=2)
@@ -728,9 +735,9 @@ class StageProfiling(StageParametersRadialDistribution):
         ax.set_title(title, fontsize=20)
         for r in r_arr:
             sa_section = BladeSection(self.alpha0_l(r), self.alpha1_l(r), self.b_a_sa, self.gamma1_s_sa(r),
-                                      self.gamma1_k_sa(r), pnt_count, self.r1_sa, self.s2_sa)
+                                      self.gamma1_k_sa(r), pnt_count, self.r1_sa_rel * self.b_a_sa, self.s2_sa)
             rk_section = BladeSection(self.beta1_l(r), self.beta2_l(r), self.b_a_rk, self.gamma1_s_rk(r),
-                                      self.gamma1_k_rk(r), pnt_count, self.r1_rk, self.s2_rk)
+                                      self.gamma1_k_rk(r), pnt_count, self.r1_rk_rel * self.b_a_rk, self.s2_rk)
             ax.plot(xs=sa_section.x_s, ys=-sa_section.y_s + self.t_sa_av, zs=r, color='red', linewidth=linewidth)
             ax.plot(xs=sa_section.x_k, ys=-sa_section.y_k + self.t_sa_av, zs=r, color='red', linewidth=linewidth)
             ax.plot(xs=rk_section.x_s + self.b_a_sa + self.delta_a_sa, ys=rk_section.y_s, zs=r, color='blue',
@@ -849,6 +856,12 @@ class TurbineProfiling:
         for i in self:
             i.s2_sa = s2_sa
             i.s2_rk = s2_rk
+
+    def set_inlet_edge_rel_radius(self, r1_rk_rel, r1_sa_rel):
+        """Задает относительный радиус закругления входных кромок лопаток СА и РК на всех ступенях"""
+        for i in self:
+            i.r1_rk_rel = r1_rk_rel
+            i.r1_sa_rel = r1_sa_rel
 
     def compute_profile(self):
         for i in self:
