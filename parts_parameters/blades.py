@@ -34,8 +34,8 @@ for n1, i1 in enumerate(stages):
     sa_blades[n1]['D2_in'] = NXExpression(number_type, 'D2_in', i1['sa']['D05_in'], m_unit)
     sa_blades[n1]['D1_out'] = NXExpression(number_type, 'D1_out', i1['sa']['D0_out'], m_unit)
     sa_blades[n1]['D2_out'] = NXExpression(number_type, 'D2_out', i1['sa']['D05_out'], m_unit)
-    sa_blades[n1]['z'] = NXExpression(integer_type, 'z', i1['rk']['z'], nd_unit)
-    sa_blades[n1]['b_a'] = NXExpression(number_type, 'b_a', i1['rk']['b_a'], m_unit)
+    sa_blades[n1]['z'] = NXExpression(integer_type, 'z', i1['sa']['z'], nd_unit)
+    sa_blades[n1]['b_a'] = NXExpression(number_type, 'b_a', i1['sa']['b_a'], m_unit)
     for n2, i2 in enumerate(i1['sa']['sections']):
         for n3, i3 in enumerate(i2.x_s):
             s_point_name = 's%s_%s' % (n3, n2)
