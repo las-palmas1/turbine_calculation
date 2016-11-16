@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 number_type = 'Number'
 mm_unit = 'MilliMeter'
@@ -54,3 +55,31 @@ def create_expressions_file(exp_filename, part_filename, exp_dict):
     if filename_arr.count(exp_filename) == 0:
         file = open(os.path.join(old_versions_dir, exp_filename), 'w')
         file.close()
+
+
+class LockTeethCoordinates:
+    def __init__(self, y1, z1, s, r, phi, gamma, beta, count):
+        self.y1 = y1
+        self.z1 = z1
+        self.s = s
+        self.r = r
+        self.phi = phi
+        self.gamma = gamma
+        self.beta = beta
+        self.count = count
+        self.l = s / 2 * np.tan(np.pi - beta - gamma) / (np.tan(np.pi - beta - gamma) + np.tan(beta)) / np.cos(beta)
+        self.angle1 = np.pi / 2 - self.phi / 2 - self.beta
+        self.angle2 = self.gamma - self.angle1
+        self.y2 = self.y1 - self.l * np.cos(self.angle1)
+        self.z2 = self.z1 - self.l * np.sin(self.angle1)
+        self.y3 = self.y2 - self.l * np.cos(self.angle1)
+        self.z3 = self.z2 - self.l * np.cos(self.angle1)
+        self.y4 = self.y3 + self.r / (np.tan(self.gamma / 2)) * (np.cos(self.angle2) - np.cos(self.angle1))
+        self.z4 = self.z4 - self.r / (np.tan(self.gamma / 2)) * (np.sin(self.angle2) + np.sin(self.angle1))
+        self.y5 = self.y2 - self.s / 2 * np.sin(self.phi / 2)
+        self.z5 = self.z2 - self.s / 2 * np.cos(self.phi / 2)
+        self.y6 = self.y5 + (self.y5 - self.y4)
+        self.z6 = self.z5 - (self.z4 - self.z5)
+        self.y7 = self.y6 + self.r / np.tan(self.gamma / 2) * (np.cos(self.angle2) - np.cos(self.angle1))
+        self.z7 = self.z6 - self.r / np.tan(self.gamma / 2) * (np.sin(self.angle2) + np.sin(self.angle1))
+
