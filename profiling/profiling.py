@@ -411,14 +411,20 @@ class BladeSection:
             self.dir2_av = np.tan(np.pi / 2 - self.angle2)
             self.x_av, self.y_av = self.compute_parabola_coordinates_by_dir(0, self.b_a, self.dir1_av,
                                                                             self.dir2_av, self.pnt_count)
-            self.x_s, self.y_s = self.compute_parabola_coordinates_by_points(0, self.y_av[0] - 0.5 * self.r1, self.b_a,
-                                                                             self.y_av[self.pnt_count - 1] -
-                                                                             0.5 * self.s2, self.pnt_count,
-                                                                             dir1=self.dir1_s)
-            self.x_k, self.y_k = self.compute_parabola_coordinates_by_points(0, self.y_av[0] + 0.5 * self.r1, self.b_a,
-                                                                             self.y_av[self.pnt_count - 1] +
-                                                                             0.5 * self.s2, self.pnt_count,
-                                                                             dir1=self.dir1_k)
+            self.x_s, self.y_s = self.compute_parabola_coordinates_by_points(0, self.y_av[0] -
+                                                                             0.5 * self.r1 /
+                                                                             np.cos(np.pi / 2 - self.angle1),
+                                                                             self.b_a, self.y_av[self.pnt_count - 1] -
+                                                                             0.5 * self.s2 /
+                                                                             np.cos(np.pi / 2 - self.angle2),
+                                                                             self.pnt_count, dir1=self.dir1_s)
+            self.x_k, self.y_k = self.compute_parabola_coordinates_by_points(0, self.y_av[0] +
+                                                                             0.5 * self.r1 /
+                                                                             np.cos(np.pi / 2 - self.angle1),
+                                                                             self.b_a, self.y_av[self.pnt_count - 1] +
+                                                                             0.5 * self.s2 /
+                                                                             np.cos(np.pi / 2 - self.angle2),
+                                                                             self.pnt_count, dir1=self.dir1_k)
             self._compute_section_center()
             self.x_s -= self.x_center
             self.y_s -= self.y_center
@@ -432,6 +438,11 @@ class BladeSection:
                                        (self.x_k[self.pnt_count - 1] - self.x_k[self.pnt_count - 2])) + np.pi / 2
             self.gamma2_s = self.angle2 - self.angle2_s
             self.gamma2_k = self.angle2_k - self.angle2
+            self.tan_alpha = self.b_a / (self.y_av[len(self.y_av) - 1] - self.y_av[0])
+            if self.tan_alpha >= 0:
+                self.alpha = np.arctan(self.tan_alpha)
+            else:
+                self.alpha = np.pi + np.arctan(self.tan_alpha)
         except AssertionError:
             pass
 
@@ -888,6 +899,8 @@ class TurbineProfiling:
             arr[n1]['rk']['D2_out'] = self._turbine.geom[n1].D2 + self._turbine.geom[n1].l2
             arr[n1]['rk']['delta_r'] = self._turbine.geom[n1].delta_r_rk
             arr[n1]['rk']['b_a'] = i1.b_a_rk
+            arr[n1]['rk']['delta_a_sa'] = self._turbine.geom[n1].delta_a_sa
+            arr[n1]['rk']['delta_a_rk'] = self._turbine.geom[n1].delta_a_rk
             for i2 in i1:
                 arr[n1]['sa']['sections'].append(i2['sa'])
                 arr[n1]['rk']['sections'].append(i2['rk'])
