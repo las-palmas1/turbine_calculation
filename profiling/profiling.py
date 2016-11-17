@@ -439,6 +439,7 @@ class BladeSection:
             self.gamma2_s = self.angle2 - self.angle2_s
             self.gamma2_k = self.angle2_k - self.angle2
             self.tan_alpha = self.b_a / (self.y_av[len(self.y_av) - 1] - self.y_av[0])
+            # alpha - угол установки
             if self.tan_alpha >= 0:
                 self.alpha = np.arctan(self.tan_alpha)
             else:
