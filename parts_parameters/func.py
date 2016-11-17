@@ -67,19 +67,24 @@ class LockTeethCoordinates:
         self.gamma = gamma
         self.beta = beta
         self.count = count
-        self.l = s / 2 * np.tan(np.pi - beta - gamma) / (np.tan(np.pi - beta - gamma) + np.tan(beta)) / np.cos(beta)
+        self.l = s / 2 * np.tan(np.pi - beta - gamma) / (np.tan(np.pi - beta - gamma) + np.tan(beta)) / np.cos(beta) - \
+                 r / np.tan(gamma / 2)
         self.angle1 = np.pi / 2 - self.phi / 2 - self.beta
         self.angle2 = self.gamma - self.angle1
         self.y2 = self.y1 - self.l * np.cos(self.angle1)
         self.z2 = self.z1 - self.l * np.sin(self.angle1)
         self.y3 = self.y2 - self.l * np.cos(self.angle1)
-        self.z3 = self.z2 - self.l * np.cos(self.angle1)
+        self.z3 = self.z2 - self.l * np.sin(self.angle1)
         self.y4 = self.y3 + self.r / (np.tan(self.gamma / 2)) * (np.cos(self.angle2) - np.cos(self.angle1))
-        self.z4 = self.z4 - self.r / (np.tan(self.gamma / 2)) * (np.sin(self.angle2) + np.sin(self.angle1))
+        self.z4 = self.z3 - self.r / (np.tan(self.gamma / 2)) * (np.sin(self.angle2) + np.sin(self.angle1))
         self.y5 = self.y2 - self.s / 2 * np.sin(self.phi / 2)
         self.z5 = self.z2 - self.s / 2 * np.cos(self.phi / 2)
         self.y6 = self.y5 + (self.y5 - self.y4)
         self.z6 = self.z5 - (self.z4 - self.z5)
         self.y7 = self.y6 + self.r / np.tan(self.gamma / 2) * (np.cos(self.angle2) - np.cos(self.angle1))
         self.z7 = self.z6 - self.r / np.tan(self.gamma / 2) * (np.sin(self.angle2) + np.sin(self.angle1))
+        self.y_last = self.y2 - self.s * np.sin(self.phi / 2) * self.count
+        self.z_last = self.z2 - self.s * np.cos(self.phi / 2) * self.count
+
+
 
