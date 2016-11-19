@@ -1,5 +1,6 @@
 import pickle as pk
 from parts_parameters.func import *
+from profiling.profiling import BladeSection
 
 file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'profiling', 'profiling_results'), 'rb')
 stages = pk.load(file)
@@ -46,6 +47,18 @@ for n1, i1 in enumerate(stages):
                                                                                i2.r*1e3], nd_unit)
 
 
+def angle_rotate(blade_section: BladeSection, b1):
+    rot_angle = np.pi / 2 - blade_section.alpha
+    rot_matrix = np.array([[np.cos(rot_angle), np.sin(rot_angle)],
+                          [-np.sin(rot_angle), np.cos(rot_angle)]])
+    y_k_new = np.dot(rot_matrix, [blade_section.x_k, blade_section.y_k])[1]
+    y_s_new = np.dot(rot_matrix, [blade_section.x_s, blade_section.y_s])[1]
+    chord_blade = (max(y_k_new) - min(y_s_new)) / np.sin(blade_section.alpha)
+    chord1 = blade_section.y_k[0] - b1 / np.tan(blade_section.alpha)
+    result = (0.5 * chord_blade - chord1) / blade_section.r
+    return result
+
+
 class FirstStageTail:
     def __init__(self):
         deg = np.pi / 180
@@ -70,13 +83,13 @@ class FirstStageTail:
         self.theta = NXExpression(number_type, 'theta', 0.9 * self.psi.value, deg_unit)
         self.s = NXExpression(number_type, 's', 10, mm_unit)
         self.teeth_count = NXExpression(integer_type, 'teeth_count', 3, nd_unit)
-        self.r1 = NXExpression(number_type, 'r1', 2, mm_unit)
+        self.r1 = NXExpression(number_type, 'r1', 0.9, mm_unit)
         self.phi = NXExpression(number_type, 'phi', 40, deg_unit)
         self.gamma = NXExpression(number_type, 'gamma', 30, deg_unit)
         self.beta = NXExpression(number_type, 'beta', 30, deg_unit)
-        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value)),
+        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value) / 2),
                                mm_unit)
-        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value)),
+        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value) / 2),
                                mm_unit)
         angle1 = np.pi / 2 - self.phi.value * deg / 2 - self.beta.value * deg
         self.z1 = NXExpression(number_type, 'z1', self.z0.value - 2, mm_unit)
@@ -99,14 +112,8 @@ class FirstStageTail:
         self.z7 = NXExpression(number_type, 'z7', lock_teeth.z7, mm_unit)
         self.y_last = NXExpression(number_type, 'y_last', lock_teeth.y_last, mm_unit)
         self.z_last = NXExpression(number_type, 'z_last', lock_teeth.z_last, mm_unit)
-        b1 = stages[0]['rk']['sections'][0].r1 * 0.5 / np.cos(np.pi / 2 - stages[0]['rk']['sections'][0].angle1) - \
-             self.b1.value / 1e3 / np.tan(np.radians(self.alpha.value))
-        ang1 = np.arcsin(b1 / (stages[0]['rk']['D1_in'] * 0.5))
-        b2 = (max(stages[0]['rk']['sections'][0].y_k) - min(stages[0]['rk']['sections'][0].y_s)) * \
-              np.sin(np.radians(self.alpha.value))
-        ang_blade = np.arcsin(b2 / stages[0]['rk']['D1_in'])
-        self.angle_rotate = NXExpression(number_type, 'angle_rotate', self.psi.value / 2 - ang1 * deg -
-                                         0.5 * (self.psi.value - ang_blade * deg), deg_unit)
+        ang_rot = angle_rotate(stages[0]['rk']['sections'][0], self.b1.value / 1e3)
+        self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
 
 
 class SecondStageTail:
@@ -133,12 +140,14 @@ class SecondStageTail:
         self.theta = NXExpression(number_type, 'theta', 0.9 * self.psi.value, deg_unit)
         self.s = NXExpression(number_type, 's', 10, mm_unit)
         self.teeth_count = NXExpression(integer_type, 'teeth_count', 3, nd_unit)
-        self.r1 = NXExpression(number_type, 'r1', 2, mm_unit)
+        self.r1 = NXExpression(number_type, 'r1', 0.9, mm_unit)
         self.phi = NXExpression(number_type, 'phi', 40, deg_unit)
         self.gamma = NXExpression(number_type, 'gamma', 30, deg_unit)
         self.beta = NXExpression(number_type, 'beta', 30, deg_unit)
-        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value)), mm_unit)
-        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value)), mm_unit)
+        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value) / 2),
+                               mm_unit)
+        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value) / 2),
+                               mm_unit)
         angle1 = np.pi / 2 - self.phi.value * deg / 2 - self.beta.value * deg
         self.z1 = NXExpression(number_type, 'z1', self.z0.value - 2, mm_unit)
         self.y1 = NXExpression(number_type, 'y1', self.y0.value - (self.z0.value - self.z1.value) / np.tan(angle1),
@@ -160,11 +169,5 @@ class SecondStageTail:
         self.z7 = NXExpression(number_type, 'z7', lock_teeth.z7, mm_unit)
         self.y_last = NXExpression(number_type, 'y_last', lock_teeth.y_last, mm_unit)
         self.z_last = NXExpression(number_type, 'z_last', lock_teeth.z_last, mm_unit)
-        b1 = stages[1]['rk']['sections'][0].r1 * 0.5 / np.cos(np.pi / 2 - stages[1]['rk']['sections'][0].angle1) - \
-             self.b1.value / 1e3 / np.tan(np.radians(self.alpha.value))
-        ang1 = np.arcsin(b1 / (stages[1]['rk']['D1_in'] * 0.5))
-        b2 = (max(stages[1]['rk']['sections'][0].y_k) - min(stages[1]['rk']['sections'][0].y_s)) * \
-              np.sin(np.radians(self.alpha.value))
-        ang_blade = np.arcsin(b2 / stages[1]['rk']['D1_in'])
-        self.angle_rotate = NXExpression(number_type, 'angle_rotate', self.psi.value / 2 - ang1 * deg -
-                                         0.5 * (self.psi.value - ang_blade * deg), deg_unit)
+        ang_rot = angle_rotate(stages[1]['rk']['sections'][0], self.b1.value / 1e3)
+        self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
