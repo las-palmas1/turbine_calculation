@@ -412,18 +412,14 @@ class BladeSection:
             self.x_av, self.y_av = self.compute_parabola_coordinates_by_dir(0, self.b_a, self.dir1_av,
                                                                             self.dir2_av, self.pnt_count)
             self.x_s, self.y_s = self.compute_parabola_coordinates_by_points(0, self.y_av[0] -
-                                                                             0.5 * self.r1 /
-                                                                             np.cos(np.pi / 2 - self.angle1),
+                                                                             0.5 * self.r1,
                                                                              self.b_a, self.y_av[self.pnt_count - 1] -
-                                                                             0.5 * self.s2 /
-                                                                             np.cos(np.pi / 2 - self.angle2),
+                                                                             0.5 * self.s2,
                                                                              self.pnt_count, dir1=self.dir1_s)
             self.x_k, self.y_k = self.compute_parabola_coordinates_by_points(0, self.y_av[0] +
-                                                                             0.5 * self.r1 /
-                                                                             np.cos(np.pi / 2 - self.angle1),
+                                                                             0.5 * self.r1,
                                                                              self.b_a, self.y_av[self.pnt_count - 1] +
-                                                                             0.5 * self.s2 /
-                                                                             np.cos(np.pi / 2 - self.angle2),
+                                                                             0.5 * self.s2,
                                                                              self.pnt_count, dir1=self.dir1_k)
             self._compute_section_center()
             self.x_s -= self.x_center
@@ -438,7 +434,7 @@ class BladeSection:
                                        (self.x_k[self.pnt_count - 1] - self.x_k[self.pnt_count - 2])) + np.pi / 2
             self.gamma2_s = self.angle2 - self.angle2_s
             self.gamma2_k = self.angle2_k - self.angle2
-            self.tan_alpha = self.b_a / (self.y_av[len(self.y_av) - 1] - self.y_av[0])
+            self.tan_alpha = self.b_a / (self.y_k[len(self.y_av) - 1] - self.y_k[0])
             # alpha - угол установки
             if self.tan_alpha >= 0:
                 self.alpha = np.arctan(self.tan_alpha)
