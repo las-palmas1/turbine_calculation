@@ -58,33 +58,37 @@ def create_expressions_file(exp_filename, part_filename, exp_dict):
 
 
 class LockTeethCoordinates:
-    def __init__(self, y1, z1, s, r, phi, gamma, beta, count):
-        self.y1 = y1
-        self.z1 = z1
+    def __init__(self, y0, z0, s, r1, r2, h0, phi, gamma, beta, count):
+        self.y0 = y0
+        self.z0 = z0
         self.s = s
-        self.r = r
+        self.r1 = r1
+        self.r2 = r2
+        self.h0 = h0
         self.phi = phi
         self.gamma = gamma
         self.beta = beta
         self.count = count
         self.l = s / 2 * np.tan(np.pi - beta - gamma) / (np.tan(np.pi - beta - gamma) + np.tan(beta)) / np.cos(beta) - \
-                 r / np.tan(gamma / 2)
-        self.angle1 = np.pi / 2 - self.phi / 2 - self.beta
+                 r1 / np.tan(gamma / 2)
+        self.angle1 = np.pi / 2 + self.phi / 2 - self.beta
         self.angle2 = self.gamma - self.angle1
-        self.y2 = self.y1 - self.l * np.cos(self.angle1)
-        self.z2 = self.z1 - self.l * np.sin(self.angle1)
-        self.y3 = self.y2 - self.l * np.cos(self.angle1)
+        self.y1 = self.y0
+        self.z1 = self.z0 - self.h0
+        self.y2 = self.y1 + self.r2 * (1 - np.sin(self.angle1))
+        self.z2 = self.z1 - self.r2 * np.cos(self.angle1)
+        self.y3 = self.y2 + self.l * np.cos(self.angle1)
         self.z3 = self.z2 - self.l * np.sin(self.angle1)
-        self.y4 = self.y3 + self.r / (np.tan(self.gamma / 2)) * (np.cos(self.angle2) - np.cos(self.angle1))
-        self.z4 = self.z3 - self.r / (np.tan(self.gamma / 2)) * (np.sin(self.angle2) + np.sin(self.angle1))
-        self.y5 = self.y2 - self.s / 2 * np.sin(self.phi / 2)
-        self.z5 = self.z2 - self.s / 2 * np.cos(self.phi / 2)
-        self.y6 = self.y5 + (self.y5 - self.y4)
-        self.z6 = self.z5 - (self.z4 - self.z5)
-        self.y7 = self.y6 + self.r / np.tan(self.gamma / 2) * (np.cos(self.angle2) - np.cos(self.angle1))
-        self.z7 = self.z6 - self.r / np.tan(self.gamma / 2) * (np.sin(self.angle2) + np.sin(self.angle1))
-        self.y_last = self.y2 - self.s * np.sin(self.phi / 2) * self.count
-        self.z_last = self.z2 - self.s * np.cos(self.phi / 2) * self.count
+        self.y4 = self.y3 + self.l * np.cos(self.angle1)
+        self.z4 = self.z3 - self.l * np.sin(self.angle1)
+        self.y5 = self.y4 + self.r1 / np.tan(self.gamma / 2) * (np.cos(self.angle1) - np.cos(self.angle2))
+        self.z5 = self.z4 - self.r1 / np.tan(self.gamma / 2) * (np.sin(self.angle1) + np.sin(self.angle2))
+        self.y6 = self.y3 - 0.5 * self.s * np.sin(self.phi / 2)
+        self.z6 = self.z3 - 0.5 * self.s * np.cos(self.phi / 2)
+        self.y7 = self.y6 - (self.y5 - self.y6)
+        self.z7 = self.z6 - (self.z5 - self.z6)
+        self.y_last = self.y3 - self.s / 2 * np.sin(self.phi / 2) * (2 * self.count - 1)
+        self.z_last = self.z3 - self.s / 2 * np.cos(self.phi / 2) * (2 * self.count - 1)
 
 
 

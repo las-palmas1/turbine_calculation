@@ -59,115 +59,81 @@ def angle_rotate(blade_section: BladeSection, b1):
     return result
 
 
-class FirstStageTail:
-    def __init__(self):
+class StageTail:
+    def __init__(self, n, b1_rel=0.6, b2_rel=0.5, br_rel=0.2, b_a_tail_rel=0.8, l2_rel=0.7, w2_rel=0.7):
         deg = np.pi / 180
-        self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[0]['rk']['delta_a_sa']*1e3, mm_unit)
-        self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[0]['rk']['delta_a_rk']*1e3, mm_unit)
-        self.D_tail_in = NXExpression(number_type, 'D_tail_in', min(stages[0]['rk']['D1_in'], stages[0]['rk']['D2_in'])*1e3 - 8,
-                                 mm_unit)
-        b1_rel = 0.3
-        b2_rel = 0.3
-        self.b_a1 = NXExpression(number_type, 'b_a1', stages[0]['rk']['b_a']*1e3 + self.delta_a_sa.value * b1_rel +
+        self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[n]['rk']['delta_a_sa']*1e3, mm_unit)
+        self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[n]['rk']['delta_a_rk']*1e3, mm_unit)
+        b1_rel = b1_rel
+        b2_rel = b2_rel
+        self.b_a1 = NXExpression(number_type, 'b_a1', stages[n]['rk']['b_a']*1e3 + self.delta_a_sa.value * b1_rel +
                                  self.delta_a_rk.value * b2_rel, mm_unit)
         self.b1 = NXExpression(number_type, 'b1', self.delta_a_sa.value * b1_rel, mm_unit)
-        b_a_tail_rel = 0.8
+        self.b2 = NXExpression(number_type, 'b2', self.delta_a_rk.value * b2_rel, mm_unit)
+        self.h = NXExpression(number_type, 'h', 2, mm_unit)
+        self.r3 = NXExpression(number_type, 'r3', 4, mm_unit)
+        br_rel = br_rel
+        self.br = NXExpression(number_type, 'br', self.b1.value * br_rel, mm_unit)
+        b_a_tail_rel = b_a_tail_rel
         self.b_a_tail = NXExpression(number_type, 'b_a_tail', self.b_a1.value * b_a_tail_rel, mm_unit)
-        gamma_in = np.arctan((stages[0]['rk']['D1_in'] - stages[0]['rk']['D2_in']) / stages[0]['rk']['b_a'])
-        self.D1_tail_out = NXExpression(number_type, 'D1_tail_out', stages[0]['rk']['D1_in']*1e3 + self.b1.value * np.tan(gamma_in),
-                                   mm_unit)
-        self.D2_tail_out = NXExpression(number_type, 'D2_tail_out', self.D1_tail_out.value - self.b_a1.value * np.tan(gamma_in),
-                                   mm_unit)
-        self.alpha = NXExpression(number_type, 'alpha', stages[0]['rk']['sections'][0].alpha / deg, deg_unit)
-        self.psi = NXExpression(number_type, 'psi', 360 / stages[0]['rk']['z'], deg_unit)
-        self.theta = NXExpression(number_type, 'theta', 0.9 * self.psi.value, deg_unit)
-        self.s = NXExpression(number_type, 's', 10, mm_unit)
+        self.b3 = NXExpression(number_type, 'b3', (self.b_a1.value - self.b_a_tail.value) / 2, mm_unit)
+        gamma_in = np.arctan(0.5 * (stages[n]['rk']['D1_in'] - stages[n]['rk']['D2_in']) / stages[n]['rk']['b_a'])
+        self.w1 = NXExpression(number_type, 'w1', 1, mm_unit)
+        self.D1_tail = NXExpression(number_type, 'D1_tail', stages[n]['rk']['D1_in']*1e3 +
+                                    2 * (self.b1.value - self.b3.value) * np.tan(gamma_in) -
+                                    self.w1.value / np.cos(gamma_in), mm_unit)
+        self.D2_tail = NXExpression(number_type, 'D2_tail', self.D1_tail.value -
+                                    2 * self.b_a_tail.value * np.tan(gamma_in), mm_unit)
+        l2_rel = l2_rel
+        self.psi = NXExpression(number_type, 'psi', 360 / stages[n]['rk']['z'], deg_unit)
+        self.l2 = NXExpression(number_type, 'l2', l2_rel * 0.5 * self.D2_tail.value * np.radians(self.psi.value),
+                               mm_unit)
+        self.l1 = NXExpression(number_type, 'l1', 1.5, mm_unit)
+        self.l3 = NXExpression(number_type, 'l3', 0.7 * self.b3.value, mm_unit)
+        self.D1 = NXExpression(number_type, 'D1', self.D2_tail.value - 8, mm_unit)
+        self.r4 = NXExpression(number_type, 'r4', 0.5, mm_unit)
+        self.r5 = NXExpression(number_type, 'r5', 0.5, mm_unit)
+        self.delta_D = NXExpression(number_type, 'delta_D', 2, mm_unit)
+        self.alpha = NXExpression(number_type, 'alpha', stages[n]['rk']['sections'][0].alpha / deg, deg_unit)
+        w2_rel = w2_rel
+        self.w2 = NXExpression(number_type, 'w2', w2_rel * 0.5 * self.D1_tail.value * np.radians(self.psi.value),
+                               mm_unit)
+        self.z01 = NXExpression(number_type, 'z01', np.sqrt((0.5 * self.D1_tail.value)**2 - (0.5 * self.w2.value)**2),
+                                mm_unit)
+        self.z02 = NXExpression(number_type, 'z02', np.sqrt((0.5 * self.D2_tail.value) ** 2 - (0.5 * self.w2.value) ** 2),
+                                mm_unit)
+        self.z0 = NXExpression(number_type, 'z0', min(self.z01.value, self.z02.value) - self.delta_D.value, mm_unit)
+        self.y0 = NXExpression(number_type, 'y0', 0.5 * self.w2.value, mm_unit)
+        self.s = NXExpression(number_type, 's', 5, mm_unit)
         self.teeth_count = NXExpression(integer_type, 'teeth_count', 3, nd_unit)
-        self.r1 = NXExpression(number_type, 'r1', 0.9, mm_unit)
+        self.r1 = NXExpression(number_type, 'r1', 0.6, mm_unit)
+        self.r2 = NXExpression(number_type, 'r2', 1.1, mm_unit)
         self.phi = NXExpression(number_type, 'phi', 40, deg_unit)
-        self.gamma = NXExpression(number_type, 'gamma', 30, deg_unit)
-        self.beta = NXExpression(number_type, 'beta', 30, deg_unit)
-        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value) / 2),
-                               mm_unit)
-        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value) / 2),
-                               mm_unit)
-        angle1 = np.pi / 2 - self.phi.value * deg / 2 - self.beta.value * deg
-        self.z1 = NXExpression(number_type, 'z1', self.z0.value - 2, mm_unit)
-        self.y1 = NXExpression(number_type, 'y1', self.y0.value - (self.z0.value - self.z1.value) / np.tan(angle1),
-                               mm_unit)
-        lock_teeth = LockTeethCoordinates(self.y1.value, self.z1.value, self.s.value, self.r1.value,
-                                          np.radians(self.phi.value), np.radians(self.gamma.value),
+        self.gamma = NXExpression(number_type, 'gamma', 65, deg_unit)
+        self.beta = NXExpression(number_type, 'beta', 70, deg_unit)
+        self.h0 = NXExpression(number_type, 'h0', 1, mm_unit)
+        lock_coord = LockTeethCoordinates(self.y0.value, self.z0.value, self.s.value, self.r1.value, self.r2.value,
+                                          self.h0.value, np.radians(self.phi.value), np.radians(self.gamma.value),
                                           np.radians(self.beta.value), self.teeth_count.value)
-        self.y2 = NXExpression(number_type, 'y2', lock_teeth.y2, mm_unit)
-        self.z2 = NXExpression(number_type, 'z2', lock_teeth.z2, mm_unit)
-        self.y3 = NXExpression(number_type, 'y3', lock_teeth.y3, mm_unit)
-        self.z3 = NXExpression(number_type, 'z3', lock_teeth.z3, mm_unit)
-        self.y4 = NXExpression(number_type, 'y4', lock_teeth.y4, mm_unit)
-        self.z4 = NXExpression(number_type, 'z4', lock_teeth.z4, mm_unit)
-        self.y5 = NXExpression(number_type, 'y5', lock_teeth.y5, mm_unit)
-        self.z5 = NXExpression(number_type, 'z5', lock_teeth.z5, mm_unit)
-        self.y6 = NXExpression(number_type, 'y6', lock_teeth.y6, mm_unit)
-        self.z6 = NXExpression(number_type, 'z6', lock_teeth.z6, mm_unit)
-        self.y7 = NXExpression(number_type, 'y7', lock_teeth.y7, mm_unit)
-        self.z7 = NXExpression(number_type, 'z7', lock_teeth.z7, mm_unit)
-        self.y_last = NXExpression(number_type, 'y_last', lock_teeth.y_last, mm_unit)
-        self.z_last = NXExpression(number_type, 'z_last', lock_teeth.z_last, mm_unit)
-        ang_rot = angle_rotate(stages[0]['rk']['sections'][0], self.b1.value / 1e3)
+        self.y1 = NXExpression(number_type, 'y1', lock_coord.y1, mm_unit)
+        self.z1 = NXExpression(number_type, 'z1', lock_coord.z1, mm_unit)
+        self.y2 = NXExpression(number_type, 'y2', lock_coord.y2, mm_unit)
+        self.z2 = NXExpression(number_type, 'z2', lock_coord.z2, mm_unit)
+        self.y3 = NXExpression(number_type, 'y3', lock_coord.y3, mm_unit)
+        self.z3 = NXExpression(number_type, 'z3', lock_coord.z3, mm_unit)
+        self.y4 = NXExpression(number_type, 'y4', lock_coord.y4, mm_unit)
+        self.z4 = NXExpression(number_type, 'z4', lock_coord.z4, mm_unit)
+        self.y5 = NXExpression(number_type, 'y5', lock_coord.y5, mm_unit)
+        self.z5 = NXExpression(number_type, 'z5', lock_coord.z5, mm_unit)
+        self.y6 = NXExpression(number_type, 'y6', lock_coord.y6, mm_unit)
+        self.z6 = NXExpression(number_type, 'z6', lock_coord.z6, mm_unit)
+        self.y7 = NXExpression(number_type, 'y7', lock_coord.y7, mm_unit)
+        self.z7 = NXExpression(number_type, 'z7', lock_coord.z7, mm_unit)
+        self.y_last = NXExpression(number_type, 'y_last', lock_coord.y_last, mm_unit)
+        self.z_last = NXExpression(number_type, 'z_last', lock_coord.z_last, mm_unit)
+        ang_rot = angle_rotate(stages[n]['rk']['sections'][0], self.b1.value / 1e3)
         self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
 
-
-class SecondStageTail:
-    def __init__(self):
-        deg = np.pi / 180
-        self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[1]['rk']['delta_a_sa']*1e3, mm_unit)
-        self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[1]['rk']['delta_a_rk']*1e3, mm_unit)
-        self.D_tail_in = NXExpression(number_type, 'D_tail_in', min(stages[1]['rk']['D1_in'], stages[1]['rk']['D2_in']) * 1e3 - 8,
-                                      mm_unit)
-        b1_rel = 0.3
-        b2_rel = 0.3
-        self.b_a1 = NXExpression(number_type, 'b_a1', stages[1]['rk']['b_a']*1e3 + self.delta_a_sa.value * b1_rel +
-                                 self.delta_a_rk.value * b2_rel, mm_unit)
-        self.b1 = NXExpression(number_type, 'b1', self.delta_a_sa.value * b1_rel, mm_unit)
-        b_a_tail_rel = 0.8
-        self.b_a_tail = NXExpression(number_type, 'b_a_tail', self.b_a1.value * b_a_tail_rel, mm_unit)
-        gamma_in = np.arctan((stages[1]['rk']['D1_in'] - stages[1]['rk']['D2_in']) / stages[1]['rk']['b_a'])
-        self.D1_tail_out = NXExpression(number_type, 'D1_tail_out', stages[1]['rk']['D1_in'] * 1e3 + self.b1.value * np.tan(gamma_in),
-                                        mm_unit)
-        self.D2_tail_out = NXExpression(number_type, 'D2_tail_out', self.D1_tail_out.value - self.b_a1.value * np.tan(gamma_in),
-                                        mm_unit)
-        self.alpha = NXExpression(number_type, 'alpha', stages[1]['rk']['sections'][0].alpha / deg, deg_unit)
-        self.psi = NXExpression(number_type, 'psi', 360 / stages[1]['rk']['z'], deg_unit)
-        self.theta = NXExpression(number_type, 'theta', 0.9 * self.psi.value, deg_unit)
-        self.s = NXExpression(number_type, 's', 10, mm_unit)
-        self.teeth_count = NXExpression(integer_type, 'teeth_count', 3, nd_unit)
-        self.r1 = NXExpression(number_type, 'r1', 0.9, mm_unit)
-        self.phi = NXExpression(number_type, 'phi', 40, deg_unit)
-        self.gamma = NXExpression(number_type, 'gamma', 30, deg_unit)
-        self.beta = NXExpression(number_type, 'beta', 30, deg_unit)
-        self.y0 = NXExpression(number_type, 'y0', self.D_tail_in.value / 2 * np.sin(np.radians(self.theta.value) / 2),
-                               mm_unit)
-        self.z0 = NXExpression(number_type, 'z0', self.D_tail_in.value / 2 * np.cos(np.radians(self.theta.value) / 2),
-                               mm_unit)
-        angle1 = np.pi / 2 - self.phi.value * deg / 2 - self.beta.value * deg
-        self.z1 = NXExpression(number_type, 'z1', self.z0.value - 2, mm_unit)
-        self.y1 = NXExpression(number_type, 'y1', self.y0.value - (self.z0.value - self.z1.value) / np.tan(angle1),
-                               mm_unit)
-        lock_teeth = LockTeethCoordinates(self.y1.value, self.z1.value, self.s.value, self.r1.value,
-                                          np.radians(self.phi.value), np.radians(self.gamma.value),
-                                          np.radians(self.beta.value), self.teeth_count.value)
-        self.y2 = NXExpression(number_type, 'y2', lock_teeth.y2, mm_unit)
-        self.z2 = NXExpression(number_type, 'z2', lock_teeth.z2, mm_unit)
-        self.y3 = NXExpression(number_type, 'y3', lock_teeth.y3, mm_unit)
-        self.z3 = NXExpression(number_type, 'z3', lock_teeth.z3, mm_unit)
-        self.y4 = NXExpression(number_type, 'y4', lock_teeth.y4, mm_unit)
-        self.z4 = NXExpression(number_type, 'z4', lock_teeth.z4, mm_unit)
-        self.y5 = NXExpression(number_type, 'y5', lock_teeth.y5, mm_unit)
-        self.z5 = NXExpression(number_type, 'z5', lock_teeth.z5, mm_unit)
-        self.y6 = NXExpression(number_type, 'y6', lock_teeth.y6, mm_unit)
-        self.z6 = NXExpression(number_type, 'z6', lock_teeth.z6, mm_unit)
-        self.y7 = NXExpression(number_type, 'y7', lock_teeth.y7, mm_unit)
-        self.z7 = NXExpression(number_type, 'z7', lock_teeth.z7, mm_unit)
-        self.y_last = NXExpression(number_type, 'y_last', lock_teeth.y_last, mm_unit)
-        self.z_last = NXExpression(number_type, 'z_last', lock_teeth.z_last, mm_unit)
-        ang_rot = angle_rotate(stages[1]['rk']['sections'][0], self.b1.value / 1e3)
-        self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
+first_stage_tail = StageTail(0)
+second_stage_tail = StageTail(1)
+stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]

@@ -1,10 +1,9 @@
-from parts_parameters.blades import rk_blades, sa_blades, FirstStageTail, SecondStageTail
+from parts_parameters.blades import rk_blades, sa_blades, stage_tails
 import parts_parameters.func as func
 import os
 
 models_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'model')
 
-stage_tails = [FirstStageTail().__dict__, SecondStageTail().__dict__]
 
 for n, i in enumerate(rk_blades):
     func.create_expressions_file('st%s_rk_blade' % (n + 1), os.path.join(models_path, 'st%s_rk_blade.prt' % (n + 1)),
