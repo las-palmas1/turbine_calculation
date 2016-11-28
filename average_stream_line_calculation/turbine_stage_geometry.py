@@ -122,10 +122,11 @@ class StageGeomAndHeatDrop:
         y_rk_arr = np.array([0.5 * (self.D1 - self.l1), 0.5 * (self.D1 + self.l1) - self.delta_r_rk,
                              0.5 * (self.D2 + self.l2) - self.delta_r_rk, 0.5 * (self.D2 - self.l2),
                              0.5 * (self.D1 - self.l1)])
-        x_out_arr = np.array([self.x0, x0_rk + self.b_rk + self.delta_a_rk])
-        y_out_arr = np.array([0.5 * (self.D0 + self.l0),
-                              0.5 * (self.D0 + self.l0) + np.tan(self.gamma_out) * self.length])
-        y_av_arr = np.array([0.5 * self.D0, 0.5 * self.D0 + np.tan(self.gamma_av) * self.length])
+        x_out_arr = np.array([self.x0, self.x0 + self.b_sa, x0_rk + self.b_rk + self.delta_a_rk])
+        y_out_arr = np.array([0.5 * (self.D0 + self.l0), 0.5 * (self.D05 + self.l05),
+                              0.5 * (self.D05 + self.l05) + np.tan(self.gamma_out) * (self.length - self.b_sa)])
+        y_av_arr = np.array([0.5 * self.D0, 0.5 * self.D05,
+                             0.5 * self.D0 + np.tan(self.gamma_av) * (self.length - self.b_sa)])
         plt.plot(x_sa_arr, y_sa_arr, linewidth=2, color='black')
         plt.plot(x_rk_arr, y_rk_arr, linewidth=2, color='black')
         plt.plot(x_out_arr, y_out_arr, linewidth=2, color='black')
@@ -731,6 +732,8 @@ class TurbineGeomAndHeatDropDistribution:
             if num == 0:
                 item.l1 = self.l1
                 item.D1 = self.D1
+                item.D0 = item.D05
+                item.l0 = item.l05
             else:
                 l0 = self._stages[num - 1].l0_next
                 item.l1 = l0 / (1 - (item.k_b_sa + item.k_delta_a_sa) *
