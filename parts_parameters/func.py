@@ -89,6 +89,8 @@ class LockTeethCoordinates:
         self.z7 = self.z6 - (self.z5 - self.z6)
         self.y_last = self.y3 - self.s / 2 * np.sin(self.phi / 2) * (2 * self.count - 1)
         self.z_last = self.z3 - self.s / 2 * np.cos(self.phi / 2) * (2 * self.count - 1)
+        self.y_last_next = self.y7 - self.s * (self.count - 1) * np.sin(self.phi / 2)
+        self.z_last_next = self.z7 - self.s * (self.count - 1) * np.cos(self.phi / 2)
 
 
 

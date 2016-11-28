@@ -60,7 +60,8 @@ def angle_rotate(blade_section: BladeSection, b1):
 
 
 class StageTail:
-    def __init__(self, n, b1_rel=0.6, b2_rel=0.5, br_rel=0.2, b_a_tail_rel=0.8, l2_rel=0.7, w2_rel=0.7):
+    def __init__(self, n, b1_rel=0.6, b2_rel=0.5, br_rel=0.2, b_a_tail_rel=0.8, w2_rel=0.6, c1_rel=0.5, teeth_count=2,
+                 s=5, r1=0.6, r2=1.1, phi=40, gamma=65, beta=70):
         deg = np.pi / 180
         self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[n]['rk']['delta_a_sa']*1e3, mm_unit)
         self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[n]['rk']['delta_a_rk']*1e3, mm_unit)
@@ -84,13 +85,10 @@ class StageTail:
                                     self.w1.value / np.cos(gamma_in), mm_unit)
         self.D2_tail = NXExpression(number_type, 'D2_tail', self.D1_tail.value -
                                     2 * self.b_a_tail.value * np.tan(gamma_in), mm_unit)
-        l2_rel = l2_rel
         self.psi = NXExpression(number_type, 'psi', 360 / stages[n]['rk']['z'], deg_unit)
-        self.l2 = NXExpression(number_type, 'l2', l2_rel * 0.5 * self.D2_tail.value * np.radians(self.psi.value),
-                               mm_unit)
         self.l1 = NXExpression(number_type, 'l1', 1.5, mm_unit)
-        self.l3 = NXExpression(number_type, 'l3', 0.7 * self.b3.value, mm_unit)
-        self.D1 = NXExpression(number_type, 'D1', self.D2_tail.value - 8, mm_unit)
+        self.l3 = NXExpression(number_type, 'l3', self.b_a1.value - self.b_a_tail.value - self.b3.value, mm_unit)
+        self.D1 = NXExpression(number_type, 'D1', self.D2_tail.value - 5, mm_unit)
         self.r4 = NXExpression(number_type, 'r4', 0.5, mm_unit)
         self.r5 = NXExpression(number_type, 'r5', 0.5, mm_unit)
         self.delta_D = NXExpression(number_type, 'delta_D', 2, mm_unit)
@@ -104,13 +102,13 @@ class StageTail:
                                 mm_unit)
         self.z0 = NXExpression(number_type, 'z0', min(self.z01.value, self.z02.value) - self.delta_D.value, mm_unit)
         self.y0 = NXExpression(number_type, 'y0', 0.5 * self.w2.value, mm_unit)
-        self.s = NXExpression(number_type, 's', 5, mm_unit)
-        self.teeth_count = NXExpression(integer_type, 'teeth_count', 3, nd_unit)
-        self.r1 = NXExpression(number_type, 'r1', 0.6, mm_unit)
-        self.r2 = NXExpression(number_type, 'r2', 1.1, mm_unit)
-        self.phi = NXExpression(number_type, 'phi', 40, deg_unit)
-        self.gamma = NXExpression(number_type, 'gamma', 65, deg_unit)
-        self.beta = NXExpression(number_type, 'beta', 70, deg_unit)
+        self.s = NXExpression(number_type, 's', s, mm_unit)
+        self.teeth_count = NXExpression(integer_type, 'teeth_count', teeth_count, nd_unit)
+        self.r1 = NXExpression(number_type, 'r1', r1, mm_unit)
+        self.r2 = NXExpression(number_type, 'r2', r2, mm_unit)
+        self.phi = NXExpression(number_type, 'phi', phi, deg_unit)
+        self.gamma = NXExpression(number_type, 'gamma', gamma, deg_unit)
+        self.beta = NXExpression(number_type, 'beta', beta, deg_unit)
         self.h0 = NXExpression(number_type, 'h0', 1, mm_unit)
         lock_coord = LockTeethCoordinates(self.y0.value, self.z0.value, self.s.value, self.r1.value, self.r2.value,
                                           self.h0.value, np.radians(self.phi.value), np.radians(self.gamma.value),
@@ -131,9 +129,17 @@ class StageTail:
         self.z7 = NXExpression(number_type, 'z7', lock_coord.z7, mm_unit)
         self.y_last = NXExpression(number_type, 'y_last', lock_coord.y_last, mm_unit)
         self.z_last = NXExpression(number_type, 'z_last', lock_coord.z_last, mm_unit)
+        self.y_last_next = NXExpression(number_type, 'y_last_next', lock_coord.y_last_next, mm_unit)
+        self.z_last_next = NXExpression(number_type, 'z_last_next', lock_coord.z_last_next, mm_unit)
         ang_rot = angle_rotate(stages[n]['rk']['sections'][0], self.b1.value / 1e3)
         self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
+        self.c1 = NXExpression(number_type, 'c1', c1_rel * self.y_last.value * 2, mm_unit)
+        self.c3 = NXExpression(number_type, 'c3', 2, mm_unit)
+        self.c2 = NXExpression(number_type, 'c2', 2 * self.c3.value, mm_unit)
+        self.c4 = NXExpression(number_type, 'c4', 1.5, mm_unit)
+        self.r6 = NXExpression(number_type, 'r6', 0.4 * self.c4.value, mm_unit)
+        self.r7 = NXExpression(number_type, 'r7', 1.2, mm_unit)
 
-first_stage_tail = StageTail(0)
+first_stage_tail = StageTail(0, teeth_count=2, s=5)
 second_stage_tail = StageTail(1)
 stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]
