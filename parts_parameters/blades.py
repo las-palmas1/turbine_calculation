@@ -140,6 +140,6 @@ class StageTail:
         self.r6 = NXExpression(number_type, 'r6', 0.4 * self.c4.value, mm_unit)
         self.r7 = NXExpression(number_type, 'r7', 1.2, mm_unit)
 
-first_stage_tail = StageTail(0, teeth_count=2, s=5)
+first_stage_tail = StageTail(0, teeth_count=3, s=4)
 second_stage_tail = StageTail(1)
 stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]
