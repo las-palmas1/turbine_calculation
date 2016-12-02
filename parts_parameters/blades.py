@@ -110,9 +110,9 @@ class StageTail:
         self.gamma = NXExpression(number_type, 'gamma', gamma, deg_unit)
         self.beta = NXExpression(number_type, 'beta', beta, deg_unit)
         self.h0 = NXExpression(number_type, 'h0', 1, mm_unit)
-        lock_coord = LockTeethCoordinates(self.y0.value, self.z0.value, self.s.value, self.r1.value, self.r2.value,
-                                          self.h0.value, np.radians(self.phi.value), np.radians(self.gamma.value),
-                                          np.radians(self.beta.value), self.teeth_count.value)
+        lock_coord = BladeLockTeethCoordinates(self.y0.value, self.z0.value, self.s.value, self.r1.value, self.r2.value,
+                                               self.h0.value, np.radians(self.phi.value), np.radians(self.gamma.value),
+                                               np.radians(self.beta.value), self.teeth_count.value)
         self.y1 = NXExpression(number_type, 'y1', lock_coord.y1, mm_unit)
         self.z1 = NXExpression(number_type, 'z1', lock_coord.z1, mm_unit)
         self.y2 = NXExpression(number_type, 'y2', lock_coord.y2, mm_unit)
@@ -139,6 +139,7 @@ class StageTail:
         self.c4 = NXExpression(number_type, 'c4', 1.5, mm_unit)
         self.r6 = NXExpression(number_type, 'r6', 0.4 * self.c4.value, mm_unit)
         self.r7 = NXExpression(number_type, 'r7', 1.2, mm_unit)
+        self.r_blade = NXExpression(number_type, 'r_blade', 1, mm_unit)
 
 first_stage_tail = StageTail(0, teeth_count=3, s=4)
 second_stage_tail = StageTail(1)

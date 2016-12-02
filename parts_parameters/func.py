@@ -57,7 +57,7 @@ def create_expressions_file(exp_filename, part_filename, exp_dict):
         file.close()
 
 
-class LockTeethCoordinates:
+class BladeLockTeethCoordinates:
     def __init__(self, y0, z0, s, r1, r2, h0, phi, gamma, beta, count):
         self.y0 = y0
         self.z0 = z0
@@ -91,6 +91,42 @@ class LockTeethCoordinates:
         self.z_last = self.z3 - self.s / 2 * np.cos(self.phi / 2) * (2 * self.count - 1)
         self.y_last_next = self.y2 - self.s * self.count * np.sin(self.phi / 2)
         self.z_last_next = self.z2 - self.s * self.count * np.cos(self.phi / 2)
+
+
+class DiskLockTeethCoordinates:
+    def __init__(self, blade_teeth: BladeLockTeethCoordinates, k, h1):
+        self.k = k
+        self.h1 = h1
+        self.delta_y = k * blade_teeth.s
+        self.y3 = blade_teeth.y3 + self.delta_y
+        self.delta_z = self.delta_y * np.tan(blade_teeth.angle1)
+        self.z3 = blade_teeth.z3 - self.delta_z
+        self.y2 = self.y3 - blade_teeth.l * np.cos(blade_teeth.angle1)
+        self.z2 = self.z3 + blade_teeth.l * np.sin(blade_teeth.angle1)
+        self.y4 = self.y3 + blade_teeth.l * np.cos(blade_teeth.angle1)
+        self.z4 = self.z3 - blade_teeth.l * np.cos(blade_teeth.angle1)
+        self.y5 = self.y4 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.cos(blade_teeth.angle1) -
+                                                                              np.cos(blade_teeth.angle2))
+        self.z5 = self.z4 - blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.sin(blade_teeth.angle1) +
+                                                                              np.sin(blade_teeth.angle2))
+        self.y6 = self.y5 - 0.5 * blade_teeth.s * np.sin(blade_teeth.phi / 2)
+        self.z6 = self.z5 - 0.5 * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.y7 = self.y6 - (self.y3 - self.y4)
+        self.z7 = self.z6 - (self.z3 - self.z4)
+        self.y1 = self.y2 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.cos(blade_teeth.angle2) -
+                                                                              np.cos(blade_teeth.angle1))
+        self.z1 = self.z2 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.sin(blade_teeth.angle1) +
+                                                                              np.sin(blade_teeth.angle2))
+        self.y0 = self.y3 + 0.5 * blade_teeth.s * np.sin(blade_teeth.phi / 2)
+        self.z0 = self.z3 + 0.5 * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.y_last = self.y4 - (blade_teeth.count - 1) * blade_teeth.s * np.sin(blade_teeth.phi / 2)
+        self.z_last = self.z4 + (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.y_last_next = self.y7 - (blade_teeth.count - 1) * blade_teeth.s * np.sin(blade_teeth.phi / 2)
+        self.z_last_next = self.z7 + (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.z_down = blade_teeth.z_last - self.h1
+
+
+
 
 
 
