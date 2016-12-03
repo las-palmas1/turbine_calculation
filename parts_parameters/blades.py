@@ -47,21 +47,32 @@ for n1, i1 in enumerate(stages):
                                                                                i2.r*1e3], nd_unit)
 
 
-def angle_rotate(blade_section: BladeSection, b1):
-    rot_angle = np.pi / 2 - blade_section.alpha
-    rot_matrix = np.array([[np.cos(rot_angle), np.sin(rot_angle)],
-                          [-np.sin(rot_angle), np.cos(rot_angle)]])
-    y_k_new = np.dot(rot_matrix, [blade_section.x_k, blade_section.y_k])[1]
-    y_s_new = np.dot(rot_matrix, [blade_section.x_s, blade_section.y_s])[1]
-    chord_blade = (max(y_k_new) - min(y_s_new)) / np.sin(blade_section.alpha)
-    chord1 = blade_section.y_k[0] - b1 / np.tan(blade_section.alpha)
-    result = (0.5 * chord_blade - chord1) / blade_section.r
+def angle_rotate(blade_section: BladeSection, b1, **kwargs):
+    if 'alpha' not in kwargs:
+        rot_angle = np.pi / 2 - blade_section.alpha
+        rot_matrix = np.array([[np.cos(rot_angle), np.sin(rot_angle)],
+                              [-np.sin(rot_angle), np.cos(rot_angle)]])
+        y_k_new = np.dot(rot_matrix, [blade_section.x_k, blade_section.y_k])[1]
+        y_s_new = np.dot(rot_matrix, [blade_section.x_s, blade_section.y_s])[1]
+        chord_blade = (max(y_k_new) - min(y_s_new)) / np.sin(blade_section.alpha)
+        chord1 = blade_section.y_k[0] - b1 / np.tan(blade_section.alpha)
+        result = (0.5 * chord_blade - chord1) / blade_section.r
+    else:
+        rot_angle = np.pi / 2 - kwargs['alpha']
+        rot_matrix = np.array([[np.cos(rot_angle), np.sin(rot_angle)],
+                               [-np.sin(rot_angle), np.cos(rot_angle)]])
+        y_k_new = np.dot(rot_matrix, [blade_section.x_k, blade_section.y_k])[1]
+        y_s_new = np.dot(rot_matrix, [blade_section.x_s, blade_section.y_s])[1]
+        chord_blade = (max(y_k_new) - min(y_s_new)) / np.sin(kwargs['alpha'])
+        chord1 = max(blade_section.y_k[0] - b1 / np.tan(kwargs['alpha']),
+                     blade_section.y_k[len(blade_section.y_k) - 1] - (b1 + blade_section.b_a) / np.tan(kwargs['alpha']))
+        result = (0.5 * chord_blade - chord1) / blade_section.r
     return result
 
 
 class StageTail:
     def __init__(self, n, b1_rel=0.6, b2_rel=0.5, br_rel=0.2, b_a_tail_rel=0.8, w2_rel=0.6, c1_rel=0.5, teeth_count=2,
-                 s=5, r1=0.6, r2=1.1, phi=40, gamma=65, beta=70):
+                 s=5, r1=0.6, r2=1.1, delta_D=3, phi=40, gamma=65, beta=70):
         deg = np.pi / 180
         self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[n]['rk']['delta_a_sa']*1e3, mm_unit)
         self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[n]['rk']['delta_a_rk']*1e3, mm_unit)
@@ -91,7 +102,7 @@ class StageTail:
         self.D1 = NXExpression(number_type, 'D1', self.D2_tail.value - 5, mm_unit)
         self.r4 = NXExpression(number_type, 'r4', 0.5, mm_unit)
         self.r5 = NXExpression(number_type, 'r5', 0.5, mm_unit)
-        self.delta_D = NXExpression(number_type, 'delta_D', 2, mm_unit)
+        self.delta_D = NXExpression(number_type, 'delta_D', delta_D, mm_unit)
         self.alpha = NXExpression(number_type, 'alpha', stages[n]['rk']['sections'][0].alpha / deg, deg_unit)
         w2_rel = w2_rel
         self.w2 = NXExpression(number_type, 'w2', w2_rel * 0.5 * self.D1_tail.value * np.radians(self.psi.value),
@@ -140,7 +151,14 @@ class StageTail:
         self.r6 = NXExpression(number_type, 'r6', 0.4 * self.c4.value, mm_unit)
         self.r7 = NXExpression(number_type, 'r7', 1.2, mm_unit)
         self.r_blade = NXExpression(number_type, 'r_blade', 1, mm_unit)
+        self.b1_out = NXExpression(number_type, 'b1_out', 1.2, mm_unit)
+        self.alpha_out = NXExpression(number_type, 'alpha_out',
+                                      self.alpha.value,
+                                      deg_unit)
+        ang_rot_out = angle_rotate(stages[n]['rk']['sections'][len(stages[n]['rk']['sections']) - 1],
+                                   self.b1_out.value / 1e3, alpha=np.radians(self.alpha_out.value))
+        self.ang_rotation_out = NXExpression(number_type, 'angle_rotation_out', ang_rot_out / deg, deg_unit)
 
-first_stage_tail = StageTail(0, teeth_count=3, s=4)
-second_stage_tail = StageTail(1)
+first_stage_tail = StageTail(0, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)
+second_stage_tail = StageTail(1, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)
 stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]

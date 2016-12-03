@@ -12,6 +12,7 @@ class FirstStageDisk:
                                                 np.radians(first_stage_tail.beta.value),
                                                 first_stage_tail.teeth_count.value)
         self.z_blade = NXExpression(integer_type, 'z_blade', rk_blades[0]['z'].value, nd_unit)
+        self.alpha = first_stage_tail.alpha
         self.s = first_stage_tail.s
         self.r1 = first_stage_tail.r1
         self.phi = first_stage_tail.phi
@@ -22,6 +23,11 @@ class FirstStageDisk:
         self.h1 = NXExpression(number_type, 'h1', 2, mm_unit)
         self.b_a_tail = first_stage_tail.b_a_tail
         disk_teeth = DiskLockTeethCoordinates(blade_teeth, k, self.h1.value)
+        self.angle1 = NXExpression(number_type, 'angle1', np.degrees(blade_teeth.angle1), deg_unit)
+        self.ym2 = NXExpression(number_type, 'ym2', disk_teeth.ym2, mm_unit)
+        self.zm2 = NXExpression(number_type, 'zm2', disk_teeth.zm2, mm_unit)
+        self.ym1 = NXExpression(number_type, 'ym1', disk_teeth.ym1, mm_unit)
+        self.zm1 = NXExpression(number_type, 'zm1', disk_teeth.zm1, mm_unit)
         self.y0 = NXExpression(number_type, 'y0', disk_teeth.y0, mm_unit)
         self.z0 = NXExpression(number_type, 'z0', disk_teeth.z0, mm_unit)
         self.y1 = NXExpression(number_type, 'y1', disk_teeth.y1, mm_unit)
@@ -46,16 +52,31 @@ class FirstStageDisk:
         self.D_out = NXExpression(number_type, 'D_out', 2 * disk_teeth.z0, mm_unit)
         self.D_tail_in = NXExpression(number_type, 'D_tail_in', 2 * disk_teeth.z_down, mm_unit)
         self.b1 = NXExpression(number_type, 'b1', 0.5 * self.b_a_tail.value, mm_unit)
-        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 5, mm_unit)
+        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 10, mm_unit)
         self.h3 = NXExpression(number_type, 'h3', 4, mm_unit)
         self.b2 = NXExpression(number_type, 'b2', 1.4 * self.b1.value, mm_unit)
         self.Dr_bolt = NXExpression(number_type, 'Dr_bolt', 0.5 * self.D_out.value, mm_unit)
         self.d_bolt = NXExpression(number_type, 'd_bolt', 8.5, mm_unit)
         self.t1 = NXExpression(number_type, 't1', 2, mm_unit)
         self.l_l = NXExpression(number_type, 'l_l', 20, mm_unit)
-        self.l_r = NXExpression(number_type, 'l_r', 7, mm_unit)
+        self.l_r = NXExpression(number_type, 'l_r', 15, mm_unit)
         self.b3 = NXExpression(number_type, 'b3', 1.2 * self.b2.value, mm_unit)
         self.b4 = NXExpression(number_type, 'b4', 0.7 * self.b3.value, mm_unit)
         self.b5 = NXExpression(number_type, 'b5', 0.9 * self.b3.value, mm_unit)
         self.z_hole1 = NXExpression(integer_type, 'z_hole1', 2, nd_unit)
         self.z_bolt = NXExpression(integer_type, 'z_bolt', 6, nd_unit)
+        self.r2 = NXExpression(number_type, 'r2', 0.8, mm_unit)
+        self.r3 = NXExpression(number_type, 'r3', 0.8, mm_unit)
+        self.z_tooth_hirth = NXExpression(integer_type, 'z_tooth_hirth', 250, nd_unit)
+        self.gamma_hirth = NXExpression(number_type, 'gamma_hirth', 360 / (self.z_tooth_hirth.value * 4), deg_unit)
+        self.r_hirth = NXExpression(number_type, 'r_hirth', self.Dr_bolt.value / 2 + self.d_bolt.value / 2 +
+                                    self.t1.value + 8, mm_unit)
+        self.a_hirth = NXExpression(number_type, 'a_hirth', self.r_hirth.value *
+                                    np.sin(np.radians(self.gamma_hirth.value)), mm_unit)
+        self.l_hirth = NXExpression(number_type, 'l_hirth', self.r_hirth.value *
+                                    np.cos(np.radians(self.gamma_hirth.value)), mm_unit)
+        self.alpha_hirth = NXExpression(number_type, 'alpha_hirth', 45, deg_unit)
+        self.t_hirth = NXExpression(number_type, 't_hirth', self.a_hirth.value /
+                                    np.tan(0.5 * np.radians(self.alpha_hirth.value)), mm_unit)
+        self.beta_hirth = NXExpression(number_type, 'beta_hirth',
+                                       np.degrees(np.arcsin(self.t_hirth.value / self.l_hirth.value)), deg_unit)

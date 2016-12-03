@@ -40,13 +40,15 @@ def add_expressions_into_file(file, expressions_dict):
                    expressions_dict[i].unit + '\n')
 
 
-def create_expressions_file(exp_filename, part_filename, exp_dict):
+def create_expressions_file(exp_filename, model_name, exp_dict, model_names_arr: list):
     current_dir = os.path.dirname(__file__)
     abs_exp_filename = os.path.join(current_dir, 'output', 'current', exp_filename)
-    abs_path_filename = os.path.join(current_dir, 'output', 'model_paths', exp_filename)
-    path_file = open(abs_path_filename, 'w')
-    path_file.write(os.path.abspath(part_filename) + '\n')
-    path_file.close()
+    model_names_filename = os.path.join(current_dir, 'output', 'model_paths.txt')
+    model_names_arr.append(os.path.abspath(model_name) + '\n')
+    paths_file = open(model_names_filename, 'w')
+    for i in model_names_arr:
+        paths_file.write(i)
+    paths_file.close()
     exp_file = open(abs_exp_filename, 'w')
     add_expressions_into_file(exp_file, exp_dict)
     exp_file.close()
@@ -104,25 +106,31 @@ class DiskLockTeethCoordinates:
         self.y2 = self.y3 - blade_teeth.l * np.cos(blade_teeth.angle1)
         self.z2 = self.z3 + blade_teeth.l * np.sin(blade_teeth.angle1)
         self.y4 = self.y3 + blade_teeth.l * np.cos(blade_teeth.angle1)
-        self.z4 = self.z3 - blade_teeth.l * np.cos(blade_teeth.angle1)
+        self.z4 = self.z3 - blade_teeth.l * np.sin(blade_teeth.angle1)
         self.y5 = self.y4 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.cos(blade_teeth.angle1) -
                                                                               np.cos(blade_teeth.angle2))
         self.z5 = self.z4 - blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.sin(blade_teeth.angle1) +
                                                                               np.sin(blade_teeth.angle2))
-        self.y6 = self.y5 - 0.5 * blade_teeth.s * np.sin(blade_teeth.phi / 2)
-        self.z6 = self.z5 - 0.5 * blade_teeth.s * np.cos(blade_teeth.phi / 2)
-        self.y7 = self.y6 - (self.y3 - self.y4)
-        self.z7 = self.z6 - (self.z3 - self.z4)
+        self.y6 = self.y3 - 0.5 * blade_teeth.s * np.sin(blade_teeth.phi / 2)
+        self.z6 = self.z3 - 0.5 * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.y7 = self.y6 - (self.y5 - self.y6)
+        self.z7 = self.z6 - (self.z5 - self.z6)
         self.y1 = self.y2 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.cos(blade_teeth.angle2) -
                                                                               np.cos(blade_teeth.angle1))
         self.z1 = self.z2 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.sin(blade_teeth.angle1) +
                                                                               np.sin(blade_teeth.angle2))
         self.y0 = self.y3 + 0.5 * blade_teeth.s * np.sin(blade_teeth.phi / 2)
         self.z0 = self.z3 + 0.5 * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.ym1 = self.y0 + (self.y0 - self.y1)
+        self.zm1 = self.z0 + (self.z0 - self.z1)
+        self.ym2 = self.ym1 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.cos(blade_teeth.angle2) -
+                                                                                np.cos(blade_teeth.angle1))
+        self.zm2 = self.zm1 + blade_teeth.r1 / np.tan(blade_teeth.gamma / 2) * (np.sin(blade_teeth.angle1) +
+                                                                                np.sin(blade_teeth.angle2))
         self.y_last = self.y4 - (blade_teeth.count - 1) * blade_teeth.s * np.sin(blade_teeth.phi / 2)
-        self.z_last = self.z4 + (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.z_last = self.z4 - (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
         self.y_last_next = self.y7 - (blade_teeth.count - 1) * blade_teeth.s * np.sin(blade_teeth.phi / 2)
-        self.z_last_next = self.z7 + (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
+        self.z_last_next = self.z7 - (blade_teeth.count - 1) * blade_teeth.s * np.cos(blade_teeth.phi / 2)
         self.z_down = blade_teeth.z_last - self.h1
 
 
