@@ -81,6 +81,14 @@ class FirstStageDisk:
         self.beta_hirth = NXExpression(number_type, 'beta_hirth',
                                        np.degrees(np.arcsin(self.t_hirth.value / self.l_hirth.value)), deg_unit)
 
+        self.l1_tail_ledge = first_stage_tail.l1_tail_ledge
+        self.l2_tail_ledge = first_stage_tail.l2_tail_ledge
+        self.d1_tail_ledge = first_stage_tail.d1_tail_ledge
+        self.d2_tail1_ledge = first_stage_tail.d2_tail_ledge
+        self.angle_tail_ledge = first_stage_tail.angle_tail_ledge
+        self.t1_tail_ledge = first_stage_tail.t1_tail_ledge
+        self.d_hole3 = NXExpression(number_type, 'd_hole3', round(self.t1_tail_ledge.value / 2), mm_unit)
+
 
 class SecondStageDisk:
     def __init__(self):
@@ -155,3 +163,10 @@ class SecondStageDisk:
         self.alpha_hirth = FirstStageDisk().alpha_hirth
         self.t_hirth = FirstStageDisk().t_hirth
         self.beta_hirth = FirstStageDisk().beta_hirth
+        self.l1_tail_ledge = second_stage_tail.l1_tail_ledge
+        self.l2_tail_ledge = second_stage_tail.l2_tail_ledge
+        self.d1_tail_ledge = second_stage_tail.d1_tail_ledge
+        self.d2_tail1_ledge = second_stage_tail.d2_tail_ledge
+        self.angle_tail_ledge = second_stage_tail.angle_tail_ledge
+        self.t1_tail_ledge = second_stage_tail.t1_tail_ledge
+        self.d_hole3 = NXExpression(number_type, 'd_hole3', round(self.t1_tail_ledge.value / 2), mm_unit)
