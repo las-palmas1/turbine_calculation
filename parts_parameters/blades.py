@@ -159,7 +159,7 @@ class StageTail:
         self.l1_tail_ledge = NXExpression(number_type, 'l1_tail_ledge', 4, mm_unit)
         self.l2_tail_ledge = NXExpression(number_type, 'l2_tail_ledge', self.l1_tail_ledge.value / 2, mm_unit)
         self.t1_tail_ledge = NXExpression(number_type, 't1_tail_ledge', 0.5 * self.d1_tail_ledge.value -
-                                          self.z_last.value + 2, mm_unit)
+                                          self.z_last.value, mm_unit)
 
 
 first_stage_tail = StageTail(0, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)

@@ -54,7 +54,7 @@ class FirstStageDisk:
         self.angle_disk1 = NXExpression(number_type, 'angle_disk1', 87, deg_unit)
         self.angle_disk2 = NXExpression(number_type, 'angle_disk2', 86, deg_unit)
         self.b1 = NXExpression(number_type, 'b1', 0.5 * self.b_a_tail.value, mm_unit)
-        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 10, mm_unit)
+        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 5, mm_unit)
         self.h3 = NXExpression(number_type, 'h3', 4, mm_unit)
         self.Dr_bolt = NXExpression(number_type, 'Dr_bolt', 0.5 * self.D_out.value, mm_unit)
         self.d_bolt = NXExpression(number_type, 'd_bolt', 8.5, mm_unit)
@@ -67,7 +67,7 @@ class FirstStageDisk:
         self.z_bolt = NXExpression(integer_type, 'z_bolt', 6, nd_unit)
         self.r2 = NXExpression(number_type, 'r2', 0.8, mm_unit)
         self.r3 = NXExpression(number_type, 'r3', 0.8, mm_unit)
-        self.z_tooth_hirth = NXExpression(integer_type, 'z_tooth_hirth', 250, nd_unit)
+        self.z_tooth_hirth = NXExpression(integer_type, 'z_tooth_hirth', 96, nd_unit)
         self.gamma_hirth = NXExpression(number_type, 'gamma_hirth', 360 / (self.z_tooth_hirth.value * 4), deg_unit)
         self.r_hirth = NXExpression(number_type, 'r_hirth', self.Dr_bolt.value / 2 + self.d_bolt.value / 2 +
                                     self.t1.value + 50, mm_unit)
@@ -75,12 +75,14 @@ class FirstStageDisk:
                                     np.sin(np.radians(self.gamma_hirth.value)), mm_unit)
         self.l_hirth = NXExpression(number_type, 'l_hirth', self.r_hirth.value *
                                     np.cos(np.radians(self.gamma_hirth.value)), mm_unit)
-        self.alpha_hirth = NXExpression(number_type, 'alpha_hirth', 45, deg_unit)
+        self.alpha_hirth = NXExpression(number_type, 'alpha_hirth', 60, deg_unit)
         self.t_hirth = NXExpression(number_type, 't_hirth', self.a_hirth.value /
                                     np.tan(0.5 * np.radians(self.alpha_hirth.value)), mm_unit)
         self.beta_hirth = NXExpression(number_type, 'beta_hirth',
                                        np.degrees(np.arcsin(self.t_hirth.value / self.l_hirth.value)), deg_unit)
-
+        self.alpha_butt_hirth = NXExpression(number_type, 'alpha_butt_hirth',
+                                             2 * np.degrees(np.arctan(np.tan(np.radians(self.alpha_hirth.value) / 2) *
+                                                            np.cos(np.radians(self.beta_hirth.value)))), deg_unit)
         self.l1_tail_ledge = first_stage_tail.l1_tail_ledge
         self.l2_tail_ledge = first_stage_tail.l2_tail_ledge
         self.d1_tail_ledge = first_stage_tail.d1_tail_ledge
@@ -147,7 +149,7 @@ class SecondStageDisk:
         self.angle_disk1 = NXExpression(number_type, 'angle_disk1', 88, deg_unit)
         self.angle_disk2 = NXExpression(number_type, 'angle_disk2', 88, deg_unit)
         self.b1 = NXExpression(number_type, 'b1', 0.5 * self.b_a_tail.value, mm_unit)
-        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 10, mm_unit)
+        self.h_head = NXExpression(number_type, 'h_head', 0.5 * (self.D_out.value - self.D_tail_in.value) + 5, mm_unit)
         self.h3 = NXExpression(number_type, 'h3', 4, mm_unit)
         self.l_l = NXExpression(number_type, 'l_l', self.disks_tail_interval.value, mm_unit)
         self.l_r = NXExpression(number_type, 'l_r', 6, mm_unit)
@@ -158,9 +160,10 @@ class SecondStageDisk:
         self.z_tooth_hirth = FirstStageDisk().z_tooth_hirth
         self.gamma_hirth = FirstStageDisk().gamma_hirth
         self.r_hirth = FirstStageDisk().r_hirth
+        self.alpha_hirth = FirstStageDisk().alpha_hirth
         self.a_hirth = FirstStageDisk().a_hirth
         self.l_hirth = FirstStageDisk().l_hirth
-        self.alpha_hirth = FirstStageDisk().alpha_hirth
+        self.alpha_butt_hirth = FirstStageDisk().alpha_butt_hirth
         self.t_hirth = FirstStageDisk().t_hirth
         self.beta_hirth = FirstStageDisk().beta_hirth
         self.l1_tail_ledge = second_stage_tail.l1_tail_ledge
