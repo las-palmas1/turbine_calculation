@@ -26,11 +26,12 @@ class ProfilingType(enum.Enum):
 
 
 class StageParametersRadialDistribution:
-    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c_p, k, D1_in, D1_av, D1_out, n,
+    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c0, c_p, k, D1_in, D1_av, D1_out, n,
                  c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, phi=1.0, psi=1.0):
         self.profiling_type = profiling_type
         self.p0_stag = p0_stag
         self.T0_stag = T0_stag
+        self.c0 = c0
         self.phi = phi
         self.psi = psi
         self.c_p = c_p
@@ -46,6 +47,9 @@ class StageParametersRadialDistribution:
         self.c2_a_av = c2_a_av
         self.c2_u_av = c2_u_av
         self.R = self.c_p * (self.k - 1) / self.k
+
+    def T0(self, r):
+        return self.T0_stag - self.c0(r) ** 2 / (2 * self.c_p)
 
     def c1_u(self, r):
         c1_u_av = self.c1_av * np.cos(self.alpha1_av)
@@ -409,15 +413,16 @@ class BladeSection:
             self.dir1_k = np.tan(self.angle1_k + np.pi / 2)
             self.dir1_av = np.tan(self.angle1 + np.pi / 2)
             self.dir2_av = np.tan(np.pi / 2 - self.angle2)
+            self.delta_y1 = self.r1 * (1 / np.tan(self.angle1_k / 2) + 1 / np.tan(self.angle1_s / 2))
             self.x_av, self.y_av = self.compute_parabola_coordinates_by_dir(0, self.b_a, self.dir1_av,
                                                                             self.dir2_av, self.pnt_count)
             self.x_s, self.y_s = self.compute_parabola_coordinates_by_points(0, self.y_av[0] -
-                                                                             0.5 * self.r1,
+                                                                             0.5 * self.delta_y1,
                                                                              self.b_a, self.y_av[self.pnt_count - 1] -
                                                                              0.5 * self.s2,
                                                                              self.pnt_count, dir1=self.dir1_s)
             self.x_k, self.y_k = self.compute_parabola_coordinates_by_points(0, self.y_av[0] +
-                                                                             0.5 * self.r1,
+                                                                             0.5 * self.delta_y1,
                                                                              self.b_a, self.y_av[self.pnt_count - 1] +
                                                                              0.5 * self.s2,
                                                                              self.pnt_count, dir1=self.dir1_k)
@@ -447,7 +452,7 @@ class BladeSection:
 class StageProfiling(StageParametersRadialDistribution):
     deg = np.pi / 180
 
-    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c_p, k, D1_in, D1_av, D1_out, n,
+    def __init__(self, profiling_type: ProfilingType, p0_stag, T0_stag, c0, c_p, k, D1_in, D1_av, D1_out, n,
                  c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av, c2_u_av, alpha0, pnt_count, b_a_sa, b_a_rk, delta_a_sa,
                  psi=1.0, phi=1.0, r_rel=(0, 0.5, 1), gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001,
                  s2_rk=0.001, mindif_alpha0_l_gamma1_s_sa=20 * deg, mindif_beta1_l_gamma1_s_rk=17*deg,
@@ -486,7 +491,7 @@ class StageProfiling(StageParametersRadialDistribution):
         :param mindif_alpha0_l_gamma1_s_sa: минимальная разность углов alpha0_l и gamma1_s_sa
         :param mindif_beta1_l_gamma1_s_rk: минимальная разность углов beta1_l и gamma1_s_rk
         """
-        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, c_p, k, D1_in,
+        StageParametersRadialDistribution.__init__(self, profiling_type, p0_stag, T0_stag, c0, c_p, k, D1_in,
                                                    D1_av, D1_out, n, c1_av, alpha1_av, T2_stag_av, L_u_av, c2_a_av,
                                                    c2_u_av, phi=phi, psi=psi)
         self.alpha0 = alpha0
@@ -587,13 +592,13 @@ class StageProfiling(StageParametersRadialDistribution):
         return self.alpha0(r)
 
     def alpha1_l(self, r):
-        return self.alpha1(r) - self.delta_f(self.M_c1(r), self.alpha1(r))
+        return self.alpha1(r) - self.delta_sa(r)
 
     def beta1_l(self, r):
         return self.beta1(r)
 
     def beta2_l(self, r):
-        return self.beta2(r) - self.delta_f(self.M_w2(r), self.beta2(r))
+        return self.beta2(r) - self.delta_rk(r)
 
     def gamma(self, angle1, angle2):
         deg = np.pi / 180
@@ -692,11 +697,18 @@ class StageProfiling(StageParametersRadialDistribution):
         dif_int = interp1d(0.5 * np.array([self.D1_in, self.D1_out]), [dif_in, dif_out])
         return dif_int(r)
 
+    def _compute_root_blade_temperature(self):
+        self.T_sa_blade_in = (self.T0(0.5 * self.D1_in) + self.T1(0.5 * self.D1_in)) / 2 + \
+                              0.9 * self.c0(0.5 * self.D1_in) ** 2 / (2 * self.c_p)
+        self.T_rk_blade_in = (self.T1(0.5 * self.D1_in) + self.T2(0.5 * self.D1_in)) / 2 + \
+                              0.9 * self.w1(0.5 * self.D1_in) ** 2 / (2 * self.c_p)
+
     def gamma1_s_rk(self, r):
         return self.beta1_l(r) - self.dif_beta1_l_gamma1_s_rk(r)
 
     def compute_sections_coordinates(self):
         self._compute_step()
+        self._compute_root_blade_temperature()
         r_arr = [0.5 * (self.D1_in + i * (self.D1_out - self.D1_in)) for i in self.r_rel]
         for n, i in enumerate(r_arr):
             self._sa_sections[n].angle1 = self.alpha0_l(i)
@@ -756,7 +768,7 @@ class StageProfiling(StageParametersRadialDistribution):
 
 
 def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynamics: StageGasDynamics,
-                               prof_type: ProfilingType, p0_stag, alpha0, pnt_count=20, r_rel=(0, 0.5, 1),
+                               prof_type: ProfilingType, p0_stag, c0, alpha0, pnt_count=20, r_rel=(0, 0.5, 1),
                                gamma1_k_sa_rel=0.25, gamma1_k_rk_rel=0.25, s2_sa=0.001, s2_rk=0.001) -> StageProfiling:
     """
 
@@ -772,7 +784,7 @@ def get_stage_profiling_object(stage_geom: StageGeomAndHeatDrop, stage_gas_dynam
     :param s2_rk: толщина выходной кромки РК
     :return: StageProfiling
     """
-    result = StageProfiling(prof_type, p0_stag, stage_gas_dynamics.T0_stag,
+    result = StageProfiling(prof_type, p0_stag, stage_gas_dynamics.T0_stag, c0,
                             stage_gas_dynamics.c_p_gas, stage_gas_dynamics.k_gas,
                             stage_geom.D1 - stage_geom.l1, stage_geom.D1, stage_geom.D1 + stage_geom.l1,
                             stage_gas_dynamics.n, stage_gas_dynamics.c1, stage_gas_dynamics.alpha1,
@@ -794,12 +806,13 @@ class TurbineProfiling:
             deg = np.pi / 180
             if i == 0:
                 stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type,
-                                                      lambda r: turbine[i].p0_stag, lambda r: 90 * deg,
+                                                      lambda r: turbine[i].p0_stag, lambda r: 100, lambda r: 90 * deg,
                                                       pnt_count=pnt_count, r_rel=r_rel)
                 self._stages_profile.append(stage_pr)
             else:
                 stage_pr = get_stage_profiling_object(turbine.geom[i], turbine[i], profiling_type, self[i - 1].p2_stag,
-                                                      self[i - 1].alpha2, pnt_count=pnt_count, r_rel=r_rel)
+                                                      self[i - 1].c0, self[i - 1].alpha2, pnt_count=pnt_count,
+                                                      r_rel=r_rel)
                 self._stages_profile.append(stage_pr)
 
     @property
@@ -898,6 +911,7 @@ class TurbineProfiling:
             arr[n1]['rk']['b_a'] = i1.b_a_rk
             arr[n1]['rk']['delta_a_sa'] = self._turbine.geom[n1].delta_a_sa
             arr[n1]['rk']['delta_a_rk'] = self._turbine.geom[n1].delta_a_rk
+            arr[n1]['rk']['T_rk_blade_in'] = i1.T_rk_blade_in
             for i2 in i1:
                 arr[n1]['sa']['sections'].append(i2['sa'])
                 arr[n1]['rk']['sections'].append(i2['rk'])
