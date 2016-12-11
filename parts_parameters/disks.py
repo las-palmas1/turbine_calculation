@@ -58,7 +58,7 @@ class FirstStageDisk:
         self.h3 = NXExpression(number_type, 'h3', 4, mm_unit)
         self.Dr_bolt = NXExpression(number_type, 'Dr_bolt', 0.5 * self.D_out.value, mm_unit)
         self.d_bolt = NXExpression(number_type, 'd_bolt', 8.5, mm_unit)
-        self.t1 = NXExpression(number_type, 't1', 2, mm_unit)
+        self.t1 = NXExpression(number_type, 't1', 2.1, mm_unit)
         self.l_l = NXExpression(number_type, 'l_l', 20, mm_unit)
         self.l_r = NXExpression(number_type, 'l_r', 15, mm_unit)
         self.b3 = NXExpression(number_type, 'b3', 1.1 * self.b_a_tail.value, mm_unit)

@@ -72,7 +72,7 @@ def angle_rotate(blade_section: BladeSection, b1, **kwargs):
 
 class StageTail:
     def __init__(self, n, b1_rel=0.6, b2_rel=0.5, br_rel=0.2, b_a_tail_rel=0.8, w2_rel=0.6, teeth_count=2,
-                 s=5, r1=0.6, r2=1.1, delta_D=3, phi=40, gamma=65, beta=70):
+                 s=5.0, r1=0.6, r2=1.1, delta_D=3, phi=40, gamma=65, beta=70):
         deg = np.pi / 180
         self.delta_a_sa = NXExpression(number_type, 'delta_a_sa', stages[n]['rk']['delta_a_sa']*1e3, mm_unit)
         self.delta_a_rk = NXExpression(number_type, 'delta_a_rk', stages[n]['rk']['delta_a_rk']*1e3, mm_unit)
@@ -163,5 +163,5 @@ class StageTail:
 
 
 first_stage_tail = StageTail(0, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)
-second_stage_tail = StageTail(1, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)
+second_stage_tail = StageTail(1, teeth_count=2, s=4.5, delta_D=4, w2_rel=0.5)
 stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]
