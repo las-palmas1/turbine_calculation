@@ -146,9 +146,10 @@ class StageTail:
         self.angle_rotation = NXExpression(number_type, 'angle_rotation', ang_rot / deg, deg_unit)
         self.r6 = NXExpression(number_type, 'r6', 1.2, mm_unit)
         self.r_blade = NXExpression(number_type, 'r_blade', 1, mm_unit)
-        self.b1_out = NXExpression(number_type, 'b1_out', 1.2, mm_unit)
+        self.b1_out = NXExpression(number_type, 'b1_out', 0.3 * self.delta_a_sa.value, mm_unit)
+        self.b2_out = NXExpression(number_type, 'b2_out', 0.3 * self.delta_a_rk.value, mm_unit)
         self.alpha_out = NXExpression(number_type, 'alpha_out',
-                                      self.alpha.value,
+                                      self.alpha.value - 10,
                                       deg_unit)
         ang_rot_out = angle_rotate(stages[n]['rk']['sections'][len(stages[n]['rk']['sections']) - 1],
                                    self.b1_out.value / 1e3, alpha=np.radians(self.alpha_out.value))
