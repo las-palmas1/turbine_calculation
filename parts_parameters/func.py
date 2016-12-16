@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import pickle as pk
+from average_streamline_calculation.turbine import Turbine
 
 number_type = 'Number'
 mm_unit = 'MilliMeter'
@@ -8,6 +10,13 @@ m_unit = 'Meter'
 deg_unit = 'Degrees'
 integer_type = 'Integer'
 nd_unit = 'nd'
+
+
+def get_average_streamline_calculation_results(filename) -> Turbine:
+    file = open(filename, 'rb')
+    result = pk.load(file)
+    file.close()
+    return result
 
 
 class NXExpression:

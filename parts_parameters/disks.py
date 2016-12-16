@@ -2,6 +2,11 @@ from parts_parameters.blades import first_stage_tail, second_stage_tail, rk_blad
 from parts_parameters.func import *
 
 
+turbine = get_average_streamline_calculation_results(os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                                                  'average_streamline_calculation',
+                                                                  'average_streamline_calculation_results'))
+
+
 class FirstStageDisk:
     def __init__(self):
         blade_teeth = BladeLockTeethCoordinates(first_stage_tail.y0.value, first_stage_tail.z0.value,
@@ -63,8 +68,8 @@ class FirstStageDisk:
         self.l_r = NXExpression(number_type, 'l_r', 15, mm_unit)
         self.b3 = NXExpression(number_type, 'b3', 1.1 * self.b_a_tail.value, mm_unit)
         self.b5 = NXExpression(number_type, 'b5', 0.75 * self.b3.value, mm_unit)
-        self.z_hole1 = NXExpression(integer_type, 'z_hole1', 2, nd_unit)
-        self.z_bolt = NXExpression(integer_type, 'z_bolt', 6, nd_unit)
+        self.z_hole1 = NXExpression(integer_type, 'z_hole1', 8, nd_unit)
+        self.z_bolt = NXExpression(integer_type, 'z_bolt', 8, nd_unit)
         self.r2 = NXExpression(number_type, 'r2', 0.8, mm_unit)
         self.r3 = NXExpression(number_type, 'r3', 0.8, mm_unit)
         self.z_tooth_hirth = NXExpression(integer_type, 'z_tooth_hirth', 96, nd_unit)
@@ -90,6 +95,9 @@ class FirstStageDisk:
         self.angle_tail_ledge = first_stage_tail.angle_tail_ledge
         self.t1_tail_ledge = first_stage_tail.t1_tail_ledge
         self.d_hole3 = NXExpression(number_type, 'd_hole3', round(self.t1_tail_ledge.value / 2), mm_unit)
+        self.T_rk_blade_in = NXExpression(number_type, 'T_rk_blade_in', stages[0]['rk']['T_rk_blade_in'] - 273,
+                                          'Celsius')
+        self.angle_velocity = NXExpression(number_type, 'angle_velocity', turbine.n * np.pi / 30, 'DegreesPerSecond')
 
 
 class SecondStageDisk:
@@ -173,3 +181,5 @@ class SecondStageDisk:
         self.angle_tail_ledge = second_stage_tail.angle_tail_ledge
         self.t1_tail_ledge = second_stage_tail.t1_tail_ledge
         self.d_hole3 = NXExpression(number_type, 'd_hole3', round(self.t1_tail_ledge.value / 2), mm_unit)
+        # self.angle_velocity = FirstStageDisk().angle_velocity
+        # self.T_rk_blade_in = NXExpression(number_type, 'T_rk_blade_in', stages[1]['rk']['T_rk_blade_in'] - 273, 'C')
