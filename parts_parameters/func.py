@@ -12,6 +12,12 @@ integer_type = 'Integer'
 nd_unit = 'nd'
 
 
+def func_from_par(par, par_array, *args):
+    for i in range(len(par_array)):
+        if par == par_array[i]:
+            return args[i]
+
+
 def get_average_streamline_calculation_results(filename) -> Turbine:
     file = open(filename, 'rb')
     result = pk.load(file)
