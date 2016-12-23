@@ -28,6 +28,6 @@ class HexagonBoltGOST:
         self.k = NXExpression(number_type, 'k', k(d), mm_unit)
         self.chamfer = NXExpression(number_type, 'chamfer', chamfer, mm_unit)
         self.alpha = NXExpression(number_type, 'alpha', 30, deg_unit)
-        self.d_thread_in = NXExpression(number_type, 'd_thread_in', self.d.value -  chamfer, mm_unit)
+        self.d_thread_in = NXExpression(number_type, 'd_thread_in', self.d.value - chamfer, mm_unit)
 
 

@@ -61,7 +61,7 @@ class TabLockWasherGOST:
         self.B = NXExpression(number_type, 'B', B(d), mm_unit)
         self.B1 = NXExpression(number_type, 'B1', B1(d), mm_unit)
         self.L = NXExpression(number_type, 'L', L(d), mm_unit)
-        self.L1 = NXExpression(number_type, 'L1', L1(d), mm_unit)
+        self.L11 = NXExpression(number_type, 'L11', L1(d), mm_unit)
         self.s = NXExpression(number_type, 's', s(d), mm_unit)
         self.S_bolt = NXExpression(number_type, 'S_bolt', S(d), mm_unit)
         self.r = NXExpression(number_type, 'r', r(d), mm_unit)

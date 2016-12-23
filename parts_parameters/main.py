@@ -5,6 +5,10 @@ from parts_parameters.disks import FirstStageDisk, SecondStageDisk, FirstStageDi
 from parts_parameters.standart_parts.SingleRowRadialBallBearingGOST8338_75 import BallBearing
 from parts_parameters.standart_parts.SlottedRoundNutsGOST11871_88 import SlottedRoundNutGOST
 from parts_parameters.standart_parts.MultilegLockWashersGOST11872_89 import MultilegLockWasherGOST
+from parts_parameters.standart_parts.HexagonBoltsGOST7798_70 import HexagonBoltGOST
+from parts_parameters.standart_parts.HexagonNutsGOST5915_70 import HexagonNutGOST
+from parts_parameters.standart_parts.LockWasherGOST6402_70 import LockWasherGOST
+from parts_parameters.standart_parts.TabLockWashersGOST13463_77 import TabLockWasherGOST
 
 models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'model')
 
@@ -40,3 +44,34 @@ multileg_lock_washer = MultilegLockWasherGOST(d=slotted_round_nut1.d_in.value, n
 func.create_expressions_file('multileg_lock_washer1', os.path.join(models_dir, 'multileg_lock_washer1.prt'),
                              multileg_lock_washer.__dict__, models_name_arr)
 
+bolt_external_stator_body = HexagonBoltGOST(6, 12, 12, 1)
+bolt_oil_part4 = HexagonBoltGOST(6, 12, 12, 1)
+bolt_oil_part6 = HexagonBoltGOST(6, 12, 12, 1)
+bolt_oil_tube = HexagonBoltGOST(6, 12, 12, 1)
+bolt_tripot = HexagonBoltGOST(6, 15, 12, 1)
+spring_lock_washer_d6 = LockWasherGOST(6)
+lock_washer_external_stator_body = TabLockWasherGOST(8, 9, 3)
+lock_washer_oil_tube = TabLockWasherGOST(6, 9, 3)
+nut_disk_bolt = HexagonNutGOST(8, 6.5)
+
+func.create_expressions_file('bolt_external_stator_body', os.path.join(models_dir, 'bolt_external_stator_body.prt'),
+                             bolt_external_stator_body.__dict__, models_name_arr)
+func.create_expressions_file('bolt_oil_part4', os.path.join(models_dir, 'bolt_oil_part4.prt'),
+                             bolt_oil_part4.__dict__, models_name_arr)
+func.create_expressions_file('bolt_oil_part6', os.path.join(models_dir, 'bolt_oil_part6.prt'),
+                             bolt_oil_part6.__dict__, models_name_arr)
+func.create_expressions_file('bolt_oil_tube', os.path.join(models_dir, 'bolt_oil_tube.prt'),
+                             bolt_oil_part4.__dict__, models_name_arr)
+func.create_expressions_file('bolt_oil_part6', os.path.join(models_dir, 'bolt_oil_part6.prt'),
+                             bolt_oil_part6.__dict__, models_name_arr)
+func.create_expressions_file('bolt_tripot', os.path.join(models_dir, 'bolt_tripot.prt'),
+                             bolt_tripot.__dict__, models_name_arr)
+func.create_expressions_file('spring_lock_washer_d6', os.path.join(models_dir, 'spring_lock_washer_d6.prt'),
+                             spring_lock_washer_d6.__dict__, models_name_arr)
+func.create_expressions_file('lock_washer_external_stator_body',
+                             os.path.join(models_dir, 'lock_washer_external_stator_body.prt'),
+                             lock_washer_external_stator_body.__dict__, models_name_arr)
+func.create_expressions_file('lock_washer_oil_tube', os.path.join(models_dir, 'lock_washer_oil_tube.prt'),
+                             lock_washer_oil_tube.__dict__, models_name_arr)
+func.create_expressions_file('nut_disk_bolt', os.path.join(models_dir, 'nut_disk_bolt.prt'),
+                             nut_disk_bolt.__dict__, models_name_arr)

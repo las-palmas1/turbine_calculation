@@ -116,8 +116,8 @@ class DiskLockTeethCoordinates:
         self.h1 = h1
         self.delta_y = k * blade_teeth.s
         self.y3 = blade_teeth.y3 + self.delta_y
-        self.delta_z = self.delta_y * np.tan(blade_teeth.angle1)
-        self.z3 = blade_teeth.z3 - self.delta_z
+        self.delta_z = self.delta_y / np.tan(blade_teeth.angle1)
+        self.z3 = blade_teeth.z3 + self.delta_z
         self.y2 = self.y3 - blade_teeth.l * np.cos(blade_teeth.angle1)
         self.z2 = self.z3 + blade_teeth.l * np.sin(blade_teeth.angle1)
         self.y4 = self.y3 + blade_teeth.l * np.cos(blade_teeth.angle1)
