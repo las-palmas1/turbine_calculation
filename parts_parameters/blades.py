@@ -163,6 +163,6 @@ class StageTail:
                                           self.z_last.value, mm_unit)
 
 
-first_stage_tail = StageTail(0, teeth_count=2, s=4, delta_D=4, w2_rel=0.5)
-second_stage_tail = StageTail(1, teeth_count=2, s=4.5, delta_D=4, w2_rel=0.5)
+first_stage_tail = StageTail(0, teeth_count=2, s=4.5, delta_D=4, w2_rel=0.5, b_a_tail_rel=0.6, beta=75)
+second_stage_tail = StageTail(1, teeth_count=2, s=4.5, delta_D=4, w2_rel=0.5, b_a_tail_rel=0.6, beta=75)
 stage_tails = [first_stage_tail.__dict__, second_stage_tail.__dict__]
