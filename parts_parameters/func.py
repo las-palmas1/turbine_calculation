@@ -2,6 +2,9 @@ import os
 import numpy as np
 import pickle as pk
 from average_streamline_calculation.turbine import Turbine
+from profiling.profiling import BladeSection
+import xlwt
+import math
 
 number_type = 'Number'
 mm_unit = 'MilliMeter'
@@ -149,7 +152,31 @@ class DiskLockTeethCoordinates:
         self.z_down = blade_teeth.z_last - self.h1
 
 
+def create_excel_table_with_profile_coordinates(filename, r_arr, x_k_arr, x_s_arr, y_k_arr, y_s_arr):
+    book = xlwt.Workbook()
+    sheet1 = book.add_sheet('Sheet 1')
+    sheet1.write(0, 2, 'D<L>1<L>=' + str(round(2 * r_arr[0] * 1e3, 2)))
+    sheet1.write(0, 6, 'D<L>ср<L>=' + str(round(2 * r_arr[1] * 1e3, 2)))
+    sheet1.write(0, 10, 'D<L>п<L>=' + str(round(2 * r_arr[2] * 1e3, 2)))
+    for i in range(4 * len(r_arr)):
+        if math.fmod(i, 2) == 0:
+            sheet1.write(1, i, 'Корыто')
+        else:
+            sheet1.write(1, i, 'Спинка')
+
+    for col in range(4 * len(r_arr)):
+        if math.fmod(col, 4) == 0:
+            sheet1.write(2, col, 'X, мм')
+            sheet1.write(2, col + 1, 'Y, мм')
+            sheet1.write(2, col + 2, 'X, мм')
+            sheet1.write(2, col + 3, 'Y, мм')
+            for row in range(len(y_s_arr[int(col / 4)])):
+                sheet1.write(3 + row, col, round(x_k_arr[int(col / 4)][row] * 1e3, 2))
+                sheet1.write(3 + row, col + 1, round(y_k_arr[int(col / 4)][row] * 1e3, 2))
+                sheet1.write(3 + row, col + 2, round(x_s_arr[int(col / 4)][row] * 1e3, 2))
+                sheet1.write(3 + row, col + 3, round(y_s_arr[int(col / 4)][row] * 1e3, 2))
+    book.save(filename)
 
 
-
-
+def get_blade_section(stages, n_stage, n_section, name='rk') -> BladeSection:
+    return stages[n_stage][name]['sections'][n_section]

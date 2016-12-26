@@ -1,4 +1,4 @@
-from parts_parameters.blades import rk_blades, sa_blades, stage_tails
+from parts_parameters.blades import rk_blades, sa_blades, stage_tails, stages
 import parts_parameters.func as func
 import os
 from parts_parameters.disks import FirstStageDisk, SecondStageDisk, FirstStageDiskComputationModel
@@ -10,6 +10,7 @@ from parts_parameters.standart_parts.HexagonNutsGOST5915_70 import HexagonNutGOS
 from parts_parameters.standart_parts.LockWasherGOST6402_70 import LockWasherGOST
 from parts_parameters.standart_parts.TabLockWashersGOST13463_77 import TabLockWasherGOST
 from parts_parameters.standart_parts.RadialShortCylindricalRollerBearingsGOST8328_75 import RollerBearing
+from parts_parameters.profiling_sheet import sa_blade, rk_blade, VelocityTriangles
 
 models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'model')
 
@@ -95,3 +96,21 @@ func.create_expressions_file('lock_washer_disk_bolt', os.path.join(models_dir, '
 lock_washer_tripot = TabLockWasherGOST(6, 11.9, 1.5)
 func.create_expressions_file('lock_washer_tripot', os.path.join(models_dir, 'lock_washer_tripot.prt'),
                              lock_washer_tripot.__dict__, models_name_arr)
+
+
+rk1_sec1 = func.get_blade_section(stages, 0, 0, name='rk')
+rk1_sec2 = func.get_blade_section(stages, 0, 2, name='rk')
+rk1_sec3 = func.get_blade_section(stages, 0, 4, name='rk')
+
+r_arr = [rk1_sec1.r, rk1_sec2.r, rk1_sec3.r]
+x_k_arr = [rk1_sec1.x_k, rk1_sec2.x_k, rk1_sec3.x_k]
+y_k_arr = [rk1_sec1.y_k, rk1_sec2.y_k, rk1_sec3.y_k]
+x_s_arr = [rk1_sec1.x_s, rk1_sec2.x_s, rk1_sec3.x_s]
+y_s_arr = [rk1_sec1.y_s, rk1_sec2.y_s, rk1_sec3.y_s]
+
+func.create_excel_table_with_profile_coordinates(r'output\rk_profile_coordinates_for_drawing.xls', r_arr,
+                                                 x_k_arr, x_s_arr, y_k_arr, y_s_arr)
+
+velocity_triangles = VelocityTriangles(in_scale=4, av_scale=4, out_scale=4).__dict__
+func.create_expressions_file('profiling', os.path.join(models_dir, 'profiling.prt'),
+                             func.dict_combination(rk_blade, sa_blade, velocity_triangles), models_name_arr)
