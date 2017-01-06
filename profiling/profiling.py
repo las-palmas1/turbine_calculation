@@ -171,7 +171,7 @@ class StageParametersRadialDistribution:
     def M_w2(self, r):
         return self.w2(r) / np.sqrt(self.k * self.R * self.T2(r))
 
-    def plot_parameter_distribution(self, par_names, color, figsize=(9, 7)):
+    def plot_parameter_distribution(self, filename, par_names, color, figsize=(9, 7)):
         r_in = 0.5 * self.D1_in
         r_out = 0.5 * self.D1_out
         r_av = 0.5 * self.D1_av
@@ -190,9 +190,10 @@ class StageParametersRadialDistribution:
         plt.legend(fontsize=16)
         plt.ylabel(r'$\frac{r}{r_{av}}$', fontsize=22)
         plt.grid()
+        plt.savefig(filename)
         plt.show()
 
-    def plot_velocity_triangles(self, r_rel=(0, 0.5, 1), figsize=(8, 8)):
+    def plot_velocity_triangles(self, r_rel=(0, 0.5, 1), figsize=(8, 8), dirname=None, filename=None,):
         r_arr = [0.5 * (self.D1_in + i * (self.D1_out - self.D1_in)) for i in r_rel]
         title = [r'$r_{rel} = %s$' % i for i in r_rel]
         for (n, i) in enumerate(r_arr):
@@ -208,6 +209,8 @@ class StageParametersRadialDistribution:
             plt.grid()
             plt.title(title[n], fontsize=20)
             plt.legend()
+            if dirname is not None and filename is not None:
+                plt.savefig(os.path.join(dirname, '%s_%s' % (filename, n)))
             plt.show()
 
 
@@ -344,10 +347,10 @@ class BladeSection:
 
     def _compute_section_center(self):
         x_av_arr, y_av_arr = self.compute_parabola_coordinates_by_dir(0, self.b_a, self.dir1_av, self.dir2_av, 50)
-        x_s_arr, y_s_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] - 0.5 * self.r1, self.b_a,
+        x_s_arr, y_s_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] - 0.5 * self.delta_y1, self.b_a,
                                                                        y_av_arr[49] - 0.5 * self.s2, 50,
                                                                        dir1=self.dir1_s)
-        x_k_arr, y_k_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] + 0.5 * self.r1, self.b_a,
+        x_k_arr, y_k_arr = self.compute_parabola_coordinates_by_points(0, y_av_arr[0] + 0.5 * self.delta_y1, self.b_a,
                                                                        y_av_arr[49] + 0.5 * self.s2, 50,
                                                                        dir1=self.dir1_k)
 
@@ -912,6 +915,35 @@ class TurbineProfiling:
             arr[n1]['rk']['delta_a_sa'] = self._turbine.geom[n1].delta_a_sa
             arr[n1]['rk']['delta_a_rk'] = self._turbine.geom[n1].delta_a_rk
             arr[n1]['rk']['T_rk_blade_in'] = i1.T_rk_blade_in
+
+            def get_st_prof(st_prof) -> StageProfiling:
+                return st_prof
+            arr[n1]['c1_in'] = get_st_prof(i1).c1(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['alpha1_in'] = get_st_prof(i1).alpha1(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['w1_in'] = get_st_prof(i1).w1(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['beta1_in'] = get_st_prof(i1).beta1(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['c2_in'] = get_st_prof(i1).c2(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['alpha2_in'] = get_st_prof(i1).alpha2(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['w2_in'] = get_st_prof(i1).w2(0.5 * get_st_prof(i1).D1_in)
+            arr[n1]['beta2_in'] = get_st_prof(i1).beta2(0.5 * get_st_prof(i1).D1_in)
+
+            arr[n1]['c1_av'] = get_st_prof(i1).c1(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['alpha1_av'] = get_st_prof(i1).alpha1(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['w1_av'] = get_st_prof(i1).w1(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['beta1_av'] = get_st_prof(i1).beta1(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['c2_av'] = get_st_prof(i1).c2(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['alpha2_av'] = get_st_prof(i1).alpha2(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['w2_av'] = get_st_prof(i1).w2(0.5 * get_st_prof(i1).D1_av)
+            arr[n1]['beta2_av'] = get_st_prof(i1).beta2(0.5 * get_st_prof(i1).D1_av)
+
+            arr[n1]['c1_out'] = get_st_prof(i1).c1(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['alpha1_out'] = get_st_prof(i1).alpha1(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['w1_out'] = get_st_prof(i1).w1(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['beta1_out'] = get_st_prof(i1).beta1(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['c2_out'] = get_st_prof(i1).c2(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['alpha2_out'] = get_st_prof(i1).alpha2(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['w2_out'] = get_st_prof(i1).w2(0.5 * get_st_prof(i1).D1_out)
+            arr[n1]['beta2_out'] = get_st_prof(i1).beta2(0.5 * get_st_prof(i1).D1_out)
             for i2 in i1:
                 arr[n1]['sa']['sections'].append(i2['sa'])
                 arr[n1]['rk']['sections'].append(i2['rk'])
