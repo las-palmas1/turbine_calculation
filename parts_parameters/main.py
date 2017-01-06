@@ -1,7 +1,8 @@
 from parts_parameters.blades import rk_blades, sa_blades, stage_tails, stages
 import parts_parameters.func as func
 import os
-from parts_parameters.disks import FirstStageDisk, SecondStageDisk, FirstStageDiskComputationModel
+from parts_parameters.disks import FirstStageDisk, SecondStageDisk, FirstStageDiskComputationModel, \
+    SecondStageDiskComputationModel
 from parts_parameters.standart_parts.SingleRowRadialBallBearingGOST8338_75 import BallBearing
 from parts_parameters.standart_parts.SlottedRoundNutsGOST11871_88 import SlottedRoundNutGOST
 from parts_parameters.standart_parts.MultilegLockWashersGOST11872_89 import MultilegLockWasherGOST
@@ -30,9 +31,10 @@ func.create_expressions_file('st1_disk', os.path.join(models_dir, 'st1_disk.prt'
 func.create_expressions_file('st2_disk', os.path.join(models_dir, 'st2_disk.prt'), SecondStageDisk().__dict__,
                              models_name_arr)
 
-func.create_expressions_file('st1_disk_model_for_computation',
-                             os.path.join(models_dir, 'st1_disk_model_for_computation.prt'),
-                             FirstStageDiskComputationModel().__dict__, models_name_arr)
+func.create_expressions_file('disks_computational_model',
+                             os.path.join(models_dir, 'disks_computational_model.prt'),
+                             func.dict_combination(FirstStageDiskComputationModel().__dict__,
+                                                   SecondStageDiskComputationModel().__dict__), models_name_arr)
 
 func.create_expressions_file('ball_bearing', os.path.join(models_dir, 'ball_bearing.prt'),
                              BallBearing(d=90, series='light').__dict__, models_name_arr)

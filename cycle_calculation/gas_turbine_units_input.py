@@ -314,7 +314,7 @@ class CombustionChamberInput:
     @property
     def work_fluid_out(self) -> KeroseneCombustionProducts:
         assert self._work_fluid_out is not None, 'work_fluid_out is None'
-        return self._work_fluid_in
+        return self._work_fluid_out
 
     @work_fluid_out.setter
     def work_fluid_out(self, value: KeroseneCombustionProducts):

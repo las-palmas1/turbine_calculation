@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 import pickle as pk
 import os
+from gas import Air, KeroseneCombustionProducts
 
 
 logger = gt_units.func.create_logger(loggerlevel=logging.INFO, filename=gt_units.log_file_name, filemode='w',
@@ -40,8 +41,6 @@ class TV7_117:
         self.g_cooling = None
         self.g_return = None
         self.lam_out = None
-        self.comp_work_fluid = None
-        self.turb_work_fluid = None
         self._N_e_specific = None
         self._G_air = None
         self._C_e = None
@@ -112,7 +111,7 @@ class TV7_117:
         return 'TV7_117 object'
 
     def _compute_inlet(self):
-        self._inlet.input.work_fluid = self.comp_work_fluid
+        self._inlet.input.work_fluid = Air()
         self._inlet.input.M_v = self.M_v
         self._inlet.input.p_in = self.p_a
         self._inlet.input.sigma_in = self.sigma_in
@@ -125,7 +124,7 @@ class TV7_117:
         self._compressor.input.p_in_stag = self._inlet.output.p_out_stag
         self._compressor.input.pi_comp_stag = self.pi_comp_stag
         self._compressor.input.T_in_stag = self._inlet.output.T_out_stag
-        self._compressor.input.work_fluid = self.comp_work_fluid
+        self._compressor.input.work_fluid = Air()
         logger.info('%s _compute_compressor' % str(self))
         self._compressor.compute_output()
 
@@ -140,8 +139,8 @@ class TV7_117:
         self._combustion_chamber.input.Q_n = self.Q_n
         self._combustion_chamber.input.sigma_comb = self.sigma_comb
         self._combustion_chamber.input.T_in_stag = self._compressor.output.T_out_stag
-        self._combustion_chamber.input.work_fluid_in = self.comp_work_fluid
-        self._combustion_chamber.input.work_fluid_out = self.turb_work_fluid
+        self._combustion_chamber.input.work_fluid_in = Air()
+        self._combustion_chamber.input.work_fluid_out = KeroseneCombustionProducts()
         logger.info('%s _compute_combustion_chamber' % str(self))
         self._combustion_chamber.compute_output()
 
@@ -154,13 +153,13 @@ class TV7_117:
         self._compressor_turbine.input.g_gas = self._combustion_chamber.output.g_gas
         self._compressor_turbine.input.L_comp = self._compressor.output.L_comp
         self._compressor_turbine.input.pi_turb_stag_init = 3
-        self._compressor_turbine.input.work_fluid = self.turb_work_fluid
+        self._compressor_turbine.input.work_fluid = KeroseneCombustionProducts()
         logger.info('%s _compute_compressor_turbine' % str(self))
         self._compressor_turbine.compute_output()
 
     def _compute_power_turbine(self):
         self._power_turbine.input.alpha = self._combustion_chamber.output.alpha
-        self._power_turbine.input.work_fluid = self.turb_work_fluid
+        self._power_turbine.input.work_fluid = KeroseneCombustionProducts()
         self._power_turbine.input.eta_turb_stag_p = self.eta_power_turb_stag_p
         self._power_turbine.input.p_in_stag = self._compressor_turbine.output.p_out_stag
         self._power_turbine.input.T_in_stag = self._compressor_turbine.output.T_out_stag
@@ -173,7 +172,7 @@ class TV7_117:
         self._outlet.input.lam_out = self.lam_out
         self._outlet.input.p_out = self.p_a
         self._outlet.input.sigma_out = self.sigma_out
-        self._outlet.input.work_fluid = self.turb_work_fluid
+        self._outlet.input.work_fluid = KeroseneCombustionProducts()
         logger.info('%s _compute_outlet' % str(self))
         self._outlet.compute_output()
 
@@ -192,12 +191,12 @@ class TV7_117:
         set_atr = object.__setattr__
         if len(self.pi_comp_stag) > 1:
             logger.info('%s _compute_optimal_pi' % str(self))
-            G_air_interp = interp1d(self.pi_comp_stag, self._G_air)
+            G_air_interp = interp1d(self.pi_comp_stag, self._G_air, kind='quadratic')
 
             def G_air(pi_comp_stag):
                 return G_air_interp(pi_comp_stag)
 
-            C_e_interp = interp1d(self.pi_comp_stag, self._C_e)
+            C_e_interp = interp1d(self.pi_comp_stag, self._C_e, kind='quadratic')
 
             def C_e(pi_comp_stag):
                 return C_e_interp(pi_comp_stag)
@@ -208,7 +207,7 @@ class TV7_117:
             pi_comp_stag_eta = minimize_scalar(C_e,
                                                bounds=(self.pi_comp_stag[0], self.pi_comp_stag[len(self.pi_comp_stag) - 1]),
                                                method='bounded')['x']
-            pi_comp_stag_opt = 0.35 * (pi_comp_stag_eta - pi_comp_stag_L) + pi_comp_stag_L
+            pi_comp_stag_opt = 0.5 * (pi_comp_stag_eta - pi_comp_stag_L) + pi_comp_stag_L
         else:
             pi_comp_stag_L = self.pi_comp_stag[0]
             pi_comp_stag_eta = self.pi_comp_stag[0]
@@ -262,11 +261,30 @@ class TV7_117:
             except AttributeError:
                 set_atr(self, key, value)
 
-    def plot(self, y_arr: np.ndarray, ylabel):
-        plt.plot(self.pi_comp_stag, y_arr, linewidth=2)
+    def plot(self, y_arr: np.ndarray, ylabel, filename, figsize=(8,6)):
+        plt.figure(figsize=figsize)
+        y = interp1d(self.pi_comp_stag, y_arr, kind='quadratic')
+        pi_arr = np.linspace(min(self.pi_comp_stag), max(self.pi_comp_stag), 30)
+        plt.plot(pi_arr, y(pi_arr), linewidth=2)
         plt.grid()
         plt.xlabel(r'$\pi_k$', fontsize=18)
         plt.ylabel(ylabel, fontsize=18)
+        plt.savefig(filename)
+        plt.show()
+
+    def plot_relative_quantities(self, filename, figsize=(8, 6)):
+        plt.figure(figsize=figsize)
+        pi_arr = np.linspace(min(self.pi_comp_stag), max(self.pi_comp_stag), 30)
+        C_e_int = interp1d(self.pi_comp_stag, self.C_e / max(self.C_e), kind='quadratic')
+        G_air_int = interp1d(self.pi_comp_stag, self.G_air / max(self.G_air), kind='quadratic')
+        eta_e_int = interp1d(self.pi_comp_stag, self.eta_e / max(self.eta_e), kind='quadratic')
+        plt.plot(pi_arr, C_e_int(pi_arr), lw=2, color='red', label=r'$\bar{C_e}$')
+        plt.plot(pi_arr, G_air_int(pi_arr), lw=2, color='blue', label=r'$\bar{G_в}$')
+        plt.plot(pi_arr, eta_e_int(pi_arr), lw=2, color='green', label=r'$\bar{\eta_e}$')
+        plt.grid()
+        plt.xlabel('$\pi_k$', fontsize=18)
+        plt.legend(loc=1, fontsize=18)
+        plt.savefig(filename)
         plt.show()
 
     def save_output(self, filename='cycle_calculation_results'):
