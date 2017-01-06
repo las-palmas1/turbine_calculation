@@ -122,7 +122,7 @@ class Air(IdealGas):
         self._c_p = self._c_p_real_func(value)
         self._k = self._c_p / (self._c_p - self._R)
         self._c_p_av = self._c_p_av_func(value)
-        self._k = self._c_p_av / (self._c_p_av - self._R)
+        self._k_av = self._c_p_av / (self._c_p_av - self._R)
 
     T = property(_T_get, _T_set)
 
@@ -197,7 +197,7 @@ class KeroseneCombustionProducts(IdealGas):
         self._c_p = self._c_p_real_func(value, alpha=self._alpha)
         self._k = self._c_p / (self._c_p - self._R)
         self._c_p_av = self._c_p_av_func(value, alpha=self._alpha)
-        self._k = self._c_p_av / (self._c_p_av - self._R)
+        self._k_av = self._c_p_av / (self._c_p_av - self._R)
 
     T = property(_T_get, _T_set)
 
